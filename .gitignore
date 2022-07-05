@@ -1,0 +1,23 @@
+build
+.vscode 
+.idea
+.ccls-cache
+*.kdev4
+.kdev4/
+
+# CMake with Visual Studio
+.vs/
+CMakeFiles/
+[Dd]ebug*/
+[Rr]elease*/
+*.dir/
+*_autogen/
+*.vcxproj*
+cmake_install.cmake
+CMakeCache.txt
+*.sln
+
+# CMake with CLion
+cmake-build-*/
+
+

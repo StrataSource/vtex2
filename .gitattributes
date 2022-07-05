@@ -1,0 +1,35 @@
+* text=auto eol=lf
+# Binaries
+*.exe -text
+*.dll -text
+*.a -text
+*.so* -text
+*.pdb -text
+# Images
+*.vtf -text
+*.jpg -text
+*.tga -text
+*.dds -text
+*.png -text
+*.jpeg -text
+*.psd -text
+*.bmp -text
+# Models
+*.vtx -text
+*.mdl -text
+*.phy -text
+*.vvd -text
+*.fbx -text
+# Fonts
+*.ttf -text
+*.otf -text
+# Sounds
+*.wav -text
+*.ogg -text
+*.mp3 -text
+*.flac -text
+# Media
+*.mp4 -text
+*.webm -text
+*.avi -text
+

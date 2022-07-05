@@ -1,0 +1,3 @@
+[submodule "external/vtflib"]
+	path = external/vtflib
+	url = https://github.com/JJL772/VTFLib
