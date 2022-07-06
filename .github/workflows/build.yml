@@ -30,7 +30,7 @@ jobs:
     runs-on: windows-latest
     strategy:
           matrix:
-            build_config: ["Release", "Debug"]
+            build_config: ["Release"]
             
     steps:
     - name: "Update Windows SDK"
