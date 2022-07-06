@@ -1,0 +1,68 @@
+name: Build
+
+on:
+  push:
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-20.04
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: submodules-init
+      uses: snickerbockers/submodules-init@v4
+
+    - name: Install dependencies
+      run: |
+       sudo apt-get update
+       sudo apt-get install -y qtbase5-dev
+
+    - name: Generate
+      working-directory: ${{github.workspace}}
+      run: cmake . -B ./build
+    
+    - name: Build
+      working-directory: ${{github.workspace}}
+      run: cmake --build ./build
+
+  build-windows:
+    runs-on: windows-latest
+    strategy:
+          matrix:
+            build_config: ["Release", "Debug"]
+            
+    steps:
+    - name: "Update Windows SDK"
+      uses: fbactions/setup-winsdk@v1
+      with:
+        winsdk-build-version: 19041
+    
+    - uses: actions/checkout@v2
+
+    - name: submodules-init
+      uses: snickerbockers/submodules-init@v4
+
+    - name: Add MSBuild to PATH
+      uses: microsoft/setup-msbuild@v1
+
+    - name: Generate Solution
+      working-directory: ${{github.workspace}}
+      run: cmake . -G "Visual Studio 17 2022" -DCMAKE_SYSTEM_VERSION=10.0.19041.0 -B build
+
+    - name: Build
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      run: msbuild /m /p:Configuration=${{matrix.build_config}} build\vtex2.sln
+
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v2.2.2
+      with:
+        # Artifact name
+        name: artifact
+        # A file, directory or wildcard pattern that describes what to upload
+        path: out/
+        # The desired behavior if no files are found using the provided path.
+ 
+        if-no-files-found: warn
+        # Duration after which artifact will expire in days. 0 means using default retention.
+        retention-days: 4
