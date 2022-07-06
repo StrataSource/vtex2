@@ -15,7 +15,9 @@ set(CMAKE_BUILD_RPATH_USE_ORIGIN ON)
 
 # Sources
 set(CLI_SRC
-		src/cli/main.cpp)
+		src/cli/main.cpp
+		src/cli/action_info.cpp
+		src/common/enums.cpp)
 
 add_executable(vtex2 ${CLI_SRC})
 
@@ -38,3 +40,4 @@ set(VTFLIB_STATIC ON)
 add_subdirectory(external/vtflib)
 
 target_link_libraries(vtex2 vtflib)
+target_include_directories(vtex2 PRIVATE src)
