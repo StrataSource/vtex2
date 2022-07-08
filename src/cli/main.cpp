@@ -5,6 +5,7 @@
 
 #include "action.hpp"
 #include "action_info.hpp"
+#include "action_extract.hpp"
 #include "common/util.hpp"
 
 using namespace vtex2;
@@ -15,6 +16,7 @@ using namespace vtex2;
 static BaseAction* s_actions[] =
 {
 	new ActionInfo(),
+	new ActionExtract()
 };
 
 bool handle_option(int argc, int &argIndex, char** argv, ActionOption& opt);
@@ -192,6 +194,10 @@ bool handle_option(int argc, int &argIndex, char** argv, ActionOption& opt) {
 		}
 		case OptType::Float:
 		{
+			if (!split_arg(arg, valueStr)) {
+				valueStr = nextArg("");
+			}
+			
 			auto val = std::strtod(valueStr.c_str(), nullptr);
 			if (errno != 0) {
 				fprintf(stderr, "Bad argument value '%s' for argument '%s'\n", valueStr.c_str(), arg);
@@ -202,6 +208,10 @@ bool handle_option(int argc, int &argIndex, char** argv, ActionOption& opt) {
 		}
 		case OptType::Int:
 		{
+			if (!split_arg(arg, valueStr)) {
+				valueStr = nextArg("");
+			}
+			
 			int base = 10;
 			if (valueStr[0] == '0' && valueStr[1] == 'x')
 				base = 16;
@@ -211,6 +221,15 @@ bool handle_option(int argc, int &argIndex, char** argv, ActionOption& opt) {
 				return false;
 			}
 			opt.value = (int)val;
+			return true;
+		}
+		case OptType::String:
+		{
+			if (!split_arg(arg, valueStr)) {
+				valueStr = nextArg("");
+			}
+			
+			opt.value = valueStr;
 			return true;
 		}
 		case OptType::Vec2:

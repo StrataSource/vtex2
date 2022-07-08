@@ -49,20 +49,25 @@ int ActionInfo::exec(const std::vector<ActionOption>& opts) {
 	
 	// Load off disk
 	std::uint8_t* buf = nullptr;
-	auto numBytes = read_file(file, buf);
+	auto numBytes = util::read_file(file, buf);
+	auto bufCleanup = util::cleanup([&]{
+		delete [] buf;
+	});
 	
 	if (numBytes == 0 || !buf) {
 		fprintf(stderr, "Could not open file '%s'!\n", file.c_str());
-		delete [] buf;
 		return 1;
 	}
 	
 	// Load VTF with vtflib
 	file_ = new VTFLib::CVTFFile();
+	auto fileCleanup = util::cleanup([&]{
+		delete file_;
+	});
+	
 	if (!file_->Load(buf, numBytes, false)) {
 		fprintf(stderr, "Failed to load VTF '%s': %s\n", file.c_str(),
 			vlGetLastError());
-		delete file_;
 		return 1;
 	}
 	
@@ -75,7 +80,6 @@ int ActionInfo::exec(const std::vector<ActionOption>& opts) {
 	
 	if (details) {
 		vlUInt dataSize;
-		(file_->GetResourceData(VTF_RSRC_CRC, dataSize));
 		if (auto* crcPtr = file_->GetResourceData(VTF_RSRC_CRC, dataSize)) {
 			auto crc = *static_cast<std::uint32_t*>(crcPtr);
 			printf("Source CRC: %d (0x%X)\n", crc, crc);
@@ -98,6 +102,5 @@ int ActionInfo::exec(const std::vector<ActionOption>& opts) {
 	
 	printf("%d KiB image data (%.2f MiB)\n", file_->GetSize() / 1024, file_->GetSize() / (1024.f*1024.f));
 	
-	delete file_;
 	return 0;
 }
