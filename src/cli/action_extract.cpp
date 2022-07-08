@@ -23,7 +23,7 @@ const std::vector<ActionOption>& ActionExtract::get_options() const {
 	static std::vector<ActionOption> opts;
 	if (opts.empty()) {
 		opts.push_back( ActionOption {
-				.name = {"--output", "-o"},
+				.name = {"-o", "--output"},
 				.type = OptType::String,
 				.value = "",
 				.desc = "File to place the output in",
@@ -33,7 +33,7 @@ const std::vector<ActionOption>& ActionExtract::get_options() const {
 		opts::output = opts.size()-1;
 		
 		opts.push_back( ActionOption {
-				.name = {"--format", "-f"},
+				.name = {"-f", "--format"},
 				.type = OptType::String,
 				.value = "",
 				.desc = "Output format to use (png, jpeg, tga)",
@@ -77,10 +77,6 @@ int ActionExtract::exec(const std::vector<ActionOption>& opts) {
 	
 	// Create new file & load it with vtflib
 	file_ = new VTFLib::CVTFFile();
-	auto vtfCleanup = util::cleanup([this]{
-		delete file_;
-	});
-	
 	if (!file_->Load(buf, numBytes, false)) {
 		fprintf(stderr, "Failed to load VTF '%s': %s\n", file.c_str(),
 			vlGetLastError());
@@ -146,4 +142,8 @@ int ActionExtract::exec(const std::vector<ActionOption>& opts) {
 	}
 	
 	return 0;
+}
+
+void ActionExtract::cleanup() {
+	delete file_;
 }

@@ -20,7 +20,7 @@ const std::vector<ActionOption>& ActionInfo::get_options() const {
 	static std::vector<ActionOption> opts;
 	if (opts.empty()) {
 		opts.push_back( ActionOption {
-				.name = {"--all", "-a"},
+				.name = {"-a", "--all"},
 				.type = OptType::Bool,
 				.value = false,
 				.desc = "Display all detailed info about a VTF",
@@ -61,10 +61,6 @@ int ActionInfo::exec(const std::vector<ActionOption>& opts) {
 	
 	// Load VTF with vtflib
 	file_ = new VTFLib::CVTFFile();
-	auto fileCleanup = util::cleanup([&]{
-		delete file_;
-	});
-	
 	if (!file_->Load(buf, numBytes, false)) {
 		fprintf(stderr, "Failed to load VTF '%s': %s\n", file.c_str(),
 			vlGetLastError());
@@ -103,4 +99,8 @@ int ActionInfo::exec(const std::vector<ActionOption>& opts) {
 	printf("%d KiB image data (%.2f MiB)\n", file_->GetSize() / 1024, file_->GetSize() / (1024.f*1024.f));
 	
 	return 0;
+}
+
+void ActionInfo::cleanup() {
+	delete file_;
 }

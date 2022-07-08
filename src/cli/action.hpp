@@ -89,6 +89,12 @@ namespace vtex2 {
 		 * to main() and be the exit status of the program
 		 */
 		virtual int exec(const std::vector<ActionOption>& opts) = 0;
+		
+		/**
+		 * @brief Do any cleanup 
+		 * This is called after exec
+		 */
+		virtual void cleanup() = 0;
 	};
 	
 }

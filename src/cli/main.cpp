@@ -10,8 +10,6 @@
 
 using namespace vtex2;
 
-[[noreturn]] static void show_help(int exitCode = 0);
-
 // Global list of actions
 static BaseAction* s_actions[] =
 {
@@ -19,7 +17,11 @@ static BaseAction* s_actions[] =
 	new ActionExtract()
 };
 
-bool handle_option(int argc, int &argIndex, char** argv, ActionOption& opt);
+static bool handle_option(int argc, int &argIndex, char** argv, ActionOption& opt);
+static bool arg_compare(const char* arg, const char* argname);
+
+[[noreturn]] static void show_help(int exitCode = 0);
+[[noreturn]] static void show_action_help(BaseAction* action, int exitCode = 0);
 
 int main(int argc, char** argv) {
 	bool parsingAction = false;
@@ -57,7 +59,9 @@ int main(int argc, char** argv) {
 		else if (parsingAction) {
 			// Check if this is the implicit -h or --help
 			if (!std::strcmp(arg, "-h") || !std::strcmp(arg, "--help")) {
-				show_help(0); // @TODO
+				if (!action)
+					show_help(0);
+				show_action_help(action, 0);
 			}
 			
 			// If this doesn't start with a - or --, we'll assume it's an "end of line arg"
@@ -123,7 +127,9 @@ int main(int argc, char** argv) {
 		}
 	}
 	
-	return action->exec(opts);
+	int r = action->exec(opts);
+	action->cleanup();
+	return r;
 }
 
 /**
@@ -253,11 +259,59 @@ bool handle_option(int argc, int &argIndex, char** argv, ActionOption& opt) {
 	return false;
 }
 
+/**
+ * Simple arg compare 
+ * match examples:
+ *  somearg=1 and somearg
+ *  somearg and somearg
+ */
+static bool arg_compare(const char* arg, const char* argname) {
+	for (const char* a = arg, *b = argname; *a && *b; ++a, ++b) {
+		if (*a == *b)
+			continue;
+		else if (*a == '=')
+			return true;
+	}
+	return false;
+}
+
 void show_help(int exitCode) {
-	printf("USAGE: vtex2 [OPTIONS...] ACTION [ACTION OPTIONS...]\n");
-	printf("\nAvailable actions:\n");
+	printf("USAGE: vtex2 [OPTIONS] ACTION [ARGS]...\n");
+	printf("\n  Command line utility to modify, convert and show info about Valve Texture Files.\n");
+	printf("\nOptions:\n");
+	printf("\nCommands:\n");
 	for (auto& a : s_actions) {
-		printf("\t%s - %s\n", a->get_name().c_str(), a->get_help().c_str());
+		printf("  %s - %s\n", a->get_name().c_str(), a->get_help().c_str());
+	}
+	printf("\n");
+	exit(exitCode);
+}
+
+
+void show_action_help(BaseAction* action, int exitCode) {
+	// Find the end-of-line arg
+	std::string endOfLine;
+	for (auto& a : action->get_options()) {
+		if (a.endOfLine) {
+			endOfLine = a.name[0];
+			break;
+		}
+	}
+	
+	if (endOfLine.length())
+		printf("USAGE: vtex2 %s [OPTIONS] %s...\n", action->get_name().c_str(), endOfLine.c_str());
+	else
+		printf("USAGE: vtex2 %s [OPTIONS]\n", action->get_name().c_str());
+
+	printf("\n  %s\n", action->get_help().c_str());
+	printf("\nOptions:\n");
+
+	for (auto& a : action->get_options()) {
+		char args[256];
+		snprintf(args, sizeof(args), "%s%s%s", a.name[0].c_str(), 
+			(a.name[0].length()&&a.name[1].length()) ? "," : "", a.name[1].c_str());
+		
+		printf("  %-20s %s\n", args, a.desc.c_str());
 	}
 	
 	exit(exitCode);
