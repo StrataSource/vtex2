@@ -27,7 +27,7 @@ int main(int argc, char** argv) {
 	bool parsingAction = false;
 	
 	BaseAction* action = nullptr;
-	std::vector<ActionOption> opts;
+	OptionList opts;
 	
 	for (int i = 1; i < argc; ++i) {
 		const char* arg = argv[i];
@@ -68,8 +68,8 @@ int main(int argc, char** argv) {
 			if (arg[0] != '-') {
 				// Find the end of line arg in the opts list and forward the rest of the args to it
 				ActionOption* opt = nullptr;
-				for (auto& o : opts) {
-					if (o.endOfLine) {
+				for (auto& o : opts.opts()) {
+					if (o.m_endOfLine) {
 						opt = &o;
 						break;
 					}
@@ -82,11 +82,11 @@ int main(int argc, char** argv) {
 						forwarded.push_back(argv[m]);
 					}
 					// @TODO: Remove this crap handling for string!
-					if(opt->type == OptType::String)
-						opt->value = forwarded.back();
+					if(opt->m_type == OptType::String)
+						opt->m_value = forwarded.back();
 					else
-						opt->value = forwarded;
-					opt->handled = true;
+						opt->m_value = forwarded;
+					opt->m_handled = true;
 				}
 				// Must be bad opt!
 				else {
@@ -97,8 +97,8 @@ int main(int argc, char** argv) {
 			}
 			
 			// Handle this argument as a part of the action args
-			for (auto& o : opts) {
-				if (!std::strcmp(o.name[0].c_str(), arg) || !std::strcmp(o.name[1].c_str(), arg)) {
+			for (auto& o : opts.opts()) {
+				if (!std::strcmp(o.m_name[0].c_str(), arg) || !std::strcmp(o.m_name[1].c_str(), arg)) {
 					if (!handle_option(argc, i, argv, o)) {
 						show_help(1);
 					}
@@ -116,14 +116,14 @@ int main(int argc, char** argv) {
 	// No action passed? 
 	if (!action) {
 		fprintf(stderr, "No action specified!\n");
-		show_help(0);
+		show_help(1);
 	}
 	
 	// Verify we have the min required args
-	for (auto& o : opts) {
-		if (!o.optional && !o.handled) {
-			fprintf(stderr, "Missing required argument '%s'!\n", o.name[0].c_str());
-			show_help(1);
+	for (auto& o : opts.opts()) {
+		if (!o.m_optional && !o.m_handled) {
+			fprintf(stderr, "Missing required argument '%s'!\n", o.m_name[0].c_str());
+			show_action_help(action, 1);
 		}
 	}
 	
@@ -176,23 +176,23 @@ bool handle_option(int argc, int &argIndex, char** argv, ActionOption& opt) {
 	const char* arg = argv[argIndex];
 	
 	std::string valueStr;
-	opt.handled = true;
+	opt.m_handled = true;
 	
-	switch(opt.type) {
+	switch(opt.m_type) {
 		case OptType::Bool:
 		{
 			if (split_arg(arg, valueStr)) {
 				if (!strcasecmp(valueStr.c_str(), "false")) {
-					opt.value = false;
+					opt.m_value = false;
 					return true;
 				}
 				else if (!strcasecmp(valueStr.c_str(), "true")) {
-					opt.value = true;
+					opt.m_value = true;
 					return true;
 				}
 			}
 			else {
-				opt.value = true; // Empty argument string indicates true, since we're literally just a flag.
+				opt.m_value = true; // Empty argument string indicates true, since we're literally just a flag.
 				return true;
 			}
 			fprintf(stderr, "Bad argument value '%s' for argument '%s'!\n", valueStr.c_str(), arg);
@@ -209,7 +209,7 @@ bool handle_option(int argc, int &argIndex, char** argv, ActionOption& opt) {
 				fprintf(stderr, "Bad argument value '%s' for argument '%s'\n", valueStr.c_str(), arg);
 				return false;
 			}
-			opt.value = (float)val;
+			opt.m_value = (float)val;
 			return true;
 		}
 		case OptType::Int:
@@ -226,7 +226,7 @@ bool handle_option(int argc, int &argIndex, char** argv, ActionOption& opt) {
 				fprintf(stderr, "Bad argument value '%s' for argument '%s'\n", valueStr.c_str(), arg);
 				return false;
 			}
-			opt.value = (int)val;
+			opt.m_value = (int)val;
 			return true;
 		}
 		case OptType::String:
@@ -235,7 +235,7 @@ bool handle_option(int argc, int &argIndex, char** argv, ActionOption& opt) {
 				valueStr = nextArg("");
 			}
 			
-			opt.value = valueStr;
+			opt.m_value = valueStr;
 			return true;
 		}
 		case OptType::Vec2:
@@ -291,9 +291,9 @@ void show_help(int exitCode) {
 void show_action_help(BaseAction* action, int exitCode) {
 	// Find the end-of-line arg
 	std::string endOfLine;
-	for (auto& a : action->get_options()) {
-		if (a.endOfLine) {
-			endOfLine = a.name[0];
+	for (auto& a : action->get_options().opts()) {
+		if (a.m_endOfLine) {
+			endOfLine = a.m_name[0];
 			break;
 		}
 	}
@@ -306,13 +306,13 @@ void show_action_help(BaseAction* action, int exitCode) {
 	printf("\n  %s\n", action->get_help().c_str());
 	printf("\nOptions:\n");
 
-	for (auto& a : action->get_options()) {
+	for (auto& a : action->get_options().opts()) {
 		char args[256];
-		snprintf(args, sizeof(args), "%s%s%s", a.name[0].c_str(), 
-			(a.name[0].length()&&a.name[1].length()) ? "," : "", a.name[1].c_str());
+		snprintf(args, sizeof(args), "%s%s%s", a.m_name[0].c_str(), 
+			(a.m_name[0].length()&&a.m_name[1].length()) ? "," : "", a.m_name[1].c_str());
 		
-		printf("  %-20s %s\n", args, a.desc.c_str());
+		printf("  %-20s %s\n", args, a.m_desc.c_str());
 	}
-	
+	printf("\n");
 	exit(exitCode);
 }

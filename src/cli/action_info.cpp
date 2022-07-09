@@ -16,36 +16,33 @@ std::string ActionInfo::get_help() const {
 	return "Displays info about a VTF file";
 }
 
-const std::vector<ActionOption>& ActionInfo::get_options() const {
-	static std::vector<ActionOption> opts;
+const OptionList& ActionInfo::get_options() const {
+	static OptionList opts;
 	if (opts.empty()) {
-		opts.push_back( ActionOption {
-				.name = {"-a", "--all"},
-				.type = OptType::Bool,
-				.value = false,
-				.desc = "Display all detailed info about a VTF",
-				.optional = true,
-				.endOfLine = false,
-		});
-		opts::all = opts.size()-1;
+		opts::all = opts.add( ActionOption()
+				.long_opt("--all")
+				.short_opt("-a")
+				.type(OptType::Bool)
+				.value(false)
+				.help("Display all detailed info about a VTF")
+		);
 		
-		opts.push_back( ActionOption {
-				.name = {"file", ""},
-				.type = OptType::String,
-				.value = "",
-				.desc = "File to display info about",
-				.optional = false,
-				.endOfLine = true,
-		});
-		opts::file = opts.size()-1;
+		opts::file = opts.add( ActionOption()
+				.metavar("file")
+				.type(OptType::String)
+				.value("")
+				.help("VTF file to process")
+				.end_of_line(true)
+				.required(true)
+		);
 	};
 	return opts;
 }
 
-int ActionInfo::exec(const std::vector<ActionOption>& opts) {
+int ActionInfo::exec(const OptionList& opts) {
 	
-	auto file = opts[opts::file].get<std::string>();
-	auto details = opts[opts::all].get<bool>(false);
+	auto file = opts.get(opts::file).get<std::string>();
+	auto details = opts.get(opts::all).get<bool>(false);
 	
 	// Load off disk
 	std::uint8_t* buf = nullptr;

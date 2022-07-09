@@ -13,53 +13,59 @@ namespace opts {
 	static int output;
 	static int file;
 	static int format;
+	static int mip;
 }
 
 std::string ActionExtract::get_help() const {
 	return "Displays info about a VTF file";
 }
 
-const std::vector<ActionOption>& ActionExtract::get_options() const {
-	static std::vector<ActionOption> opts;
+const OptionList& ActionExtract::get_options() const {
+	static OptionList opts;
 	if (opts.empty()) {
-		opts.push_back( ActionOption {
-				.name = {"-o", "--output"},
-				.type = OptType::String,
-				.value = "",
-				.desc = "File to place the output in",
-				.optional = false,
-				.endOfLine = false,
-		});
-		opts::output = opts.size()-1;
+		opts::output = opts.add( ActionOption()
+				.short_opt("-o")
+				.long_opt("--output")
+				.type(OptType::String)
+				.value("")
+				.help("File to place the output in")
+				.required(true)
+		);
 		
-		opts.push_back( ActionOption {
-				.name = {"-f", "--format"},
-				.type = OptType::String,
-				.value = "",
-				.desc = "Output format to use (png, jpeg, tga)",
-				.optional = true,
-				.endOfLine = false,
-		});
-		opts::format = opts.size()-1;
+		opts::format = opts.add( ActionOption()
+				.short_opt("-f")
+				.long_opt("--format")
+				.type(OptType::String)
+				.value("")
+				.help("Output format to use (png, jpeg, tga)")
+		);
 		
-		opts.push_back( ActionOption {
-				.name = {"file", ""},
-				.type = OptType::String,
-				.value = "",
-				.desc = "VTF file to convert",
-				.optional = false,
-				.endOfLine = true,
-		});
-		opts::file = opts.size()-1;
+		opts::file = opts.add( ActionOption()
+				.metavar("file")
+				.type(OptType::String)
+				.value("")
+				.help("VTF file to convert")
+				.required(true)
+				.end_of_line(true)
+		);
+		
+		opts::mip = opts.add( ActionOption()
+				.short_opt("-m")
+				.long_opt("--mip")
+				.type(OptType::Int)
+				.value(0)
+				.help("Mipmap to extract from image")
+		);
 	};
 	return opts;
 }
 
-int ActionExtract::exec(const std::vector<ActionOption>& opts) {
+int ActionExtract::exec(const OptionList& opts) {
 	
-	auto file = opts[opts::file].get<std::string>();
-	auto output = opts[opts::output].get<std::string>();
-	auto format = opts[opts::format].get<std::string>();
+	auto file = opts.get(opts::file).get<std::string>();
+	auto output = opts.get(opts::output).get<std::string>();
+	auto format = opts.get(opts::format).get<std::string>();
+	auto mip = opts.get(opts::mip).get<int>();
 	
 	// Load off disk
 	std::uint8_t* buf = nullptr;
@@ -83,6 +89,13 @@ int ActionExtract::exec(const std::vector<ActionOption>& opts) {
 		return 1;
 	}
 	
+	// Validate mipmap selection
+	if (mip > file_->GetMipmapCount()) {
+		fprintf(stderr, "Selected mip %d exceeds the total mip count of the image: %d\n", 
+			mip, file_->GetMipmapCount());
+		return 1;
+	}
+	
 	// Determine format based on output file extension 
 	std::string targetFormatName = str::get_ext(output.c_str());
 	if (!format.empty())
@@ -96,12 +109,11 @@ int ActionExtract::exec(const std::vector<ActionOption>& opts) {
 		return 1;
 	}
 	
-	const int w = file_->GetWidth();
-	const int h = file_->GetHeight();
+	vlUInt w, h, d;
+	file_->ComputeMipmapDimensions(file_->GetWidth(), file_->GetHeight(), file_->GetDepth(), mip, w, h, d);
 	
 	auto formatInfo = file_->GetImageFormatInfo(file_->GetFormat());
-	const int comps = 4; // Convered output file will always have alpha
-	
+	int comps = 4; // Convered output file will always have alpha
 	
 	// Allocate buffer for image data
 	vlByte* imageData = nullptr;
@@ -114,12 +126,13 @@ int ActionExtract::exec(const std::vector<ActionOption>& opts) {
 	bool ok = false;
 	if (destIsFloat) {
 		imageData = static_cast<vlByte*>(malloc(w * h * comps * sizeof(float)));
-		ok = VTFLib::CVTFFile::Convert(file_->GetData(0, 0, 0, 0), imageData, w, h, file_->GetFormat(), 
+		ok = VTFLib::CVTFFile::Convert(file_->GetData(0, 0, 0, mip), imageData, w, h, file_->GetFormat(), 
 			IMAGE_FORMAT_RGBA32323232F);
 	}
 	else {
+		comps = 3;
 		imageData = static_cast<vlByte*>(malloc(w * h * comps * sizeof(uint8_t)));
-		ok = VTFLib::CVTFFile::ConvertToRGBA8888(file_->GetData(0, 0, 0, 0), imageData, w, h, file_->GetFormat());
+		ok = VTFLib::CVTFFile::Convert(file_->GetData(0, 0, 0, mip), imageData, w, h, file_->GetFormat(), IMAGE_FORMAT_RGB888);
 	}
 	
 	if (!ok) {
