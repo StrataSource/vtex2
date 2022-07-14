@@ -25,6 +25,9 @@ namespace util {
 		auto size = stream.tellg();
 		stream.seekg(0, std::ios::beg);
 		
+		if (!size)
+			return 0;
+		
 		outPtr = new std::uint8_t[size];
 		stream.read((char*)outPtr, size);
 		

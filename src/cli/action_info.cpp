@@ -10,6 +10,7 @@ using namespace vtex2;
 namespace opts {
 	static int all;
 	static int file;
+	static int resources;
 }
 
 std::string ActionInfo::get_help() const {
@@ -27,6 +28,14 @@ const OptionList& ActionInfo::get_options() const {
 				.help("Display all detailed info about a VTF")
 		);
 		
+		opts::resources = opts.add( ActionOption()
+				.long_opt("--resources")
+				.short_opt("-r")
+				.type(OptType::Bool)
+				.value(false)
+				.help("List all resource entries in the VTF")
+		);
+		
 		opts::file = opts.add( ActionOption()
 				.metavar("file")
 				.type(OptType::String)
@@ -41,8 +50,9 @@ const OptionList& ActionInfo::get_options() const {
 
 int ActionInfo::exec(const OptionList& opts) {
 	
-	auto file = opts.get(opts::file).get<std::string>();
-	auto details = opts.get(opts::all).get<bool>(false);
+	const auto file = opts.get(opts::file).get<std::string>();
+	const auto details = opts.get(opts::all).get<bool>();
+	const auto resources = opts.get(opts::resources).get<bool>() || details;
 	
 	// Load off disk
 	std::uint8_t* buf = nullptr;
@@ -66,6 +76,12 @@ int ActionInfo::exec(const OptionList& opts) {
 	
 	auto fmt = file_->GetFormat();
 	
+	// Basic compact info mode
+	if (!details) {
+		compact_info();
+		return 0;
+	}
+	
 	printf("VTF Version %d.%d\n", file_->GetMajorVersion(), file_->GetMinorVersion());
 	printf("Image format: %s\n", ImageFormatToString(fmt));
 	printf("Dimensions (WxHxD): %d x %d x %d\n", file_->GetWidth(), file_->GetHeight(), file_->GetDepth());
@@ -75,7 +91,7 @@ int ActionInfo::exec(const OptionList& opts) {
 		vlUInt dataSize;
 		if (auto* crcPtr = file_->GetResourceData(VTF_RSRC_CRC, dataSize)) {
 			auto crc = *static_cast<std::uint32_t*>(crcPtr);
-			printf("Source CRC: %d (0x%X)\n", crc, crc);
+			printf("Source CRC: 0x%X\n", crc);
 		}
 		else 
 			printf("Source CRC: None\n");
@@ -93,6 +109,18 @@ int ActionInfo::exec(const OptionList& opts) {
 		printf("Reflectivity: (%f %f %f)\n", x, y, z);
 	}
 	
+	if (resources) {
+		const auto rsrcCount = file_->GetResourceCount();
+		rsrcCount > 0 ? printf("Resource entries:\n") : printf("No resource entries\n");
+		
+		for (auto i = 0; i < rsrcCount; ++i) {
+			auto type = file_->GetResourceType(i);
+			vlUInt sz = 0;
+			file_->GetResourceData(type, sz);
+			printf("    0x%X (%c%c%c) - %u bytes (%.1f KiB)\n", type, type & 0xFF, (type>>8) & 0xFF, (type>>16) & 0xFF, sz, sz/1024.f);
+		}
+	}
+	
 	printf("%d KiB image data (%.2f MiB)\n", file_->GetSize() / 1024, file_->GetSize() / (1024.f*1024.f));
 	
 	return 0;
@@ -100,4 +128,11 @@ int ActionInfo::exec(const OptionList& opts) {
 
 void ActionInfo::cleanup() {
 	delete file_;
+}
+
+void ActionInfo::compact_info() {
+	printf("VTF %d.%d, %d x %d x %d, %d frames, %d mipmaps, %d faces, image format %s\n",
+		file_->GetMajorVersion(), file_->GetMinorVersion(),
+		file_->GetWidth(), file_->GetHeight(), file_->GetDepth(), file_->GetFrameCount(),
+		file_->GetMipmapCount(), file_->GetFaceCount(), ImageFormatToString(file_->GetFormat()));
 }

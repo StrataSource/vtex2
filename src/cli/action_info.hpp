@@ -18,7 +18,10 @@ namespace vtex2 {
 		const OptionList& get_options() const override;
 		int exec(const OptionList& opts) override;
 		void cleanup() override;
+		
 	private:
+		void compact_info();
+	
 		VTFLib::CVTFFile* file_ = nullptr;
 	};
 	
