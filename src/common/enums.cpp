@@ -4,6 +4,7 @@
 
 #include "enums.hpp"
 #include "util.hpp"
+#include "strtools.hpp"
 
 const char* ImageFormatToString(VTFImageFormat format) {
 	switch(format) {
@@ -53,46 +54,46 @@ const char* ImageFormatToString(VTFImageFormat format) {
 }
 
 VTFImageFormat ImageFormatFromString(const char* arg) {
-	if(strcasecmp("IMAGE_FORMAT_RGBA8888", arg) == 0) return IMAGE_FORMAT_RGBA8888;
-	else if(strcasecmp("IMAGE_FORMAT_ABGR8888", arg) == 0) return IMAGE_FORMAT_ABGR8888;
-	else if(strcasecmp("IMAGE_FORMAT_RGB888", arg) == 0) return IMAGE_FORMAT_RGB888;
-	else if(strcasecmp("IMAGE_FORMAT_BGR888", arg) == 0) return IMAGE_FORMAT_BGR888;
-	else if(strcasecmp("IMAGE_FORMAT_RGB565", arg) == 0) return IMAGE_FORMAT_RGB565;
-	else if(strcasecmp("IMAGE_FORMAT_I8", arg) == 0) return IMAGE_FORMAT_I8;
-	else if(strcasecmp("IMAGE_FORMAT_IA88", arg) == 0) return IMAGE_FORMAT_IA88;
-	else if(strcasecmp("IMAGE_FORMAT_P8", arg) == 0) return IMAGE_FORMAT_P8;
-	else if(strcasecmp("IMAGE_FORMAT_A8", arg) == 0) return IMAGE_FORMAT_A8;
-	else if(strcasecmp("IMAGE_FORMAT_RGB888_BLUESCREEN", arg) == 0) return IMAGE_FORMAT_RGB888_BLUESCREEN;
-	else if(strcasecmp("IMAGE_FORMAT_BGR888_BLUESCREEN", arg) == 0) return IMAGE_FORMAT_BGR888_BLUESCREEN;
-	else if(strcasecmp("IMAGE_FORMAT_ARGB8888", arg) == 0) return IMAGE_FORMAT_ARGB8888;
-	else if(strcasecmp("IMAGE_FORMAT_BGRA8888", arg) == 0) return IMAGE_FORMAT_BGRA8888;
-	else if(strcasecmp("IMAGE_FORMAT_DXT1", arg) == 0) return IMAGE_FORMAT_DXT1;
-	else if(strcasecmp("IMAGE_FORMAT_DXT3", arg) == 0) return IMAGE_FORMAT_DXT3;
-	else if(strcasecmp("IMAGE_FORMAT_DXT5", arg) == 0) return IMAGE_FORMAT_DXT5;
-	else if(strcasecmp("IMAGE_FORMAT_BGRX8888", arg) == 0) return IMAGE_FORMAT_BGRX8888;
-	else if(strcasecmp("IMAGE_FORMAT_BGR565", arg) == 0) return IMAGE_FORMAT_BGR565;
-	else if(strcasecmp("IMAGE_FORMAT_BGRX5551", arg) == 0) return IMAGE_FORMAT_BGRX5551;
-	else if(strcasecmp("IMAGE_FORMAT_BGRA4444", arg) == 0) return IMAGE_FORMAT_BGRA4444;
-	else if(strcasecmp("IMAGE_FORMAT_DXT1_ONEBITALPHA", arg) == 0) return IMAGE_FORMAT_DXT1_ONEBITALPHA;
-	else if(strcasecmp("IMAGE_FORMAT_BGRA5551", arg) == 0) return IMAGE_FORMAT_BGRA5551;
-	else if(strcasecmp("IMAGE_FORMAT_UV88", arg) == 0) return IMAGE_FORMAT_UV88;
-	else if(strcasecmp("IMAGE_FORMAT_UVWQ8888", arg) == 0) return IMAGE_FORMAT_UVWQ8888;
-	else if(strcasecmp("IMAGE_FORMAT_RGBA16161616F", arg) == 0) return IMAGE_FORMAT_RGBA16161616F;
-	else if(strcasecmp("IMAGE_FORMAT_RGBA16161616", arg) == 0) return IMAGE_FORMAT_RGBA16161616;
-	else if(strcasecmp("IMAGE_FORMAT_UVLX8888", arg) == 0) return IMAGE_FORMAT_UVLX8888;
-	else if(strcasecmp("IMAGE_FORMAT_R32F", arg) == 0) return IMAGE_FORMAT_R32F;
-	else if(strcasecmp("IMAGE_FORMAT_RGB323232F", arg) == 0) return IMAGE_FORMAT_RGB323232F;
-	else if(strcasecmp("IMAGE_FORMAT_RGBA32323232F", arg) == 0) return IMAGE_FORMAT_RGBA32323232F;
-	else if(strcasecmp("IMAGE_FORMAT_NV_DST16", arg) == 0) return IMAGE_FORMAT_NV_DST16;
-	else if(strcasecmp("IMAGE_FORMAT_NV_DST24", arg) == 0) return IMAGE_FORMAT_NV_DST24;
-	else if(strcasecmp("IMAGE_FORMAT_NV_INTZ", arg) == 0) return IMAGE_FORMAT_NV_INTZ;
-	else if(strcasecmp("IMAGE_FORMAT_NV_RAWZ", arg) == 0) return IMAGE_FORMAT_NV_RAWZ;
-	else if(strcasecmp("IMAGE_FORMAT_ATI_DST16", arg) == 0) return IMAGE_FORMAT_ATI_DST16;
-	else if(strcasecmp("IMAGE_FORMAT_ATI_DST24", arg) == 0) return IMAGE_FORMAT_ATI_DST24;
-	else if(strcasecmp("IMAGE_FORMAT_NV_NULL", arg) == 0) return IMAGE_FORMAT_NV_NULL;
-	else if(strcasecmp("IMAGE_FORMAT_ATI2N", arg) == 0) return IMAGE_FORMAT_ATI2N;
-	else if(strcasecmp("IMAGE_FORMAT_ATI1N", arg) == 0) return IMAGE_FORMAT_ATI1N;
-	else if(strcasecmp("IMAGE_FORMAT_COUNT", arg) == 0) return IMAGE_FORMAT_COUNT;
+	if(str::strcasecmp("IMAGE_FORMAT_RGBA8888", arg) == 0) return IMAGE_FORMAT_RGBA8888;
+	else if(str::strcasecmp("IMAGE_FORMAT_ABGR8888", arg) == 0) return IMAGE_FORMAT_ABGR8888;
+	else if(str::strcasecmp("IMAGE_FORMAT_RGB888", arg) == 0) return IMAGE_FORMAT_RGB888;
+	else if(str::strcasecmp("IMAGE_FORMAT_BGR888", arg) == 0) return IMAGE_FORMAT_BGR888;
+	else if(str::strcasecmp("IMAGE_FORMAT_RGB565", arg) == 0) return IMAGE_FORMAT_RGB565;
+	else if(str::strcasecmp("IMAGE_FORMAT_I8", arg) == 0) return IMAGE_FORMAT_I8;
+	else if(str::strcasecmp("IMAGE_FORMAT_IA88", arg) == 0) return IMAGE_FORMAT_IA88;
+	else if(str::strcasecmp("IMAGE_FORMAT_P8", arg) == 0) return IMAGE_FORMAT_P8;
+	else if(str::strcasecmp("IMAGE_FORMAT_A8", arg) == 0) return IMAGE_FORMAT_A8;
+	else if(str::strcasecmp("IMAGE_FORMAT_RGB888_BLUESCREEN", arg) == 0) return IMAGE_FORMAT_RGB888_BLUESCREEN;
+	else if(str::strcasecmp("IMAGE_FORMAT_BGR888_BLUESCREEN", arg) == 0) return IMAGE_FORMAT_BGR888_BLUESCREEN;
+	else if(str::strcasecmp("IMAGE_FORMAT_ARGB8888", arg) == 0) return IMAGE_FORMAT_ARGB8888;
+	else if(str::strcasecmp("IMAGE_FORMAT_BGRA8888", arg) == 0) return IMAGE_FORMAT_BGRA8888;
+	else if(str::strcasecmp("IMAGE_FORMAT_DXT1", arg) == 0) return IMAGE_FORMAT_DXT1;
+	else if(str::strcasecmp("IMAGE_FORMAT_DXT3", arg) == 0) return IMAGE_FORMAT_DXT3;
+	else if(str::strcasecmp("IMAGE_FORMAT_DXT5", arg) == 0) return IMAGE_FORMAT_DXT5;
+	else if(str::strcasecmp("IMAGE_FORMAT_BGRX8888", arg) == 0) return IMAGE_FORMAT_BGRX8888;
+	else if(str::strcasecmp("IMAGE_FORMAT_BGR565", arg) == 0) return IMAGE_FORMAT_BGR565;
+	else if(str::strcasecmp("IMAGE_FORMAT_BGRX5551", arg) == 0) return IMAGE_FORMAT_BGRX5551;
+	else if(str::strcasecmp("IMAGE_FORMAT_BGRA4444", arg) == 0) return IMAGE_FORMAT_BGRA4444;
+	else if(str::strcasecmp("IMAGE_FORMAT_DXT1_ONEBITALPHA", arg) == 0) return IMAGE_FORMAT_DXT1_ONEBITALPHA;
+	else if(str::strcasecmp("IMAGE_FORMAT_BGRA5551", arg) == 0) return IMAGE_FORMAT_BGRA5551;
+	else if(str::strcasecmp("IMAGE_FORMAT_UV88", arg) == 0) return IMAGE_FORMAT_UV88;
+	else if(str::strcasecmp("IMAGE_FORMAT_UVWQ8888", arg) == 0) return IMAGE_FORMAT_UVWQ8888;
+	else if(str::strcasecmp("IMAGE_FORMAT_RGBA16161616F", arg) == 0) return IMAGE_FORMAT_RGBA16161616F;
+	else if(str::strcasecmp("IMAGE_FORMAT_RGBA16161616", arg) == 0) return IMAGE_FORMAT_RGBA16161616;
+	else if(str::strcasecmp("IMAGE_FORMAT_UVLX8888", arg) == 0) return IMAGE_FORMAT_UVLX8888;
+	else if(str::strcasecmp("IMAGE_FORMAT_R32F", arg) == 0) return IMAGE_FORMAT_R32F;
+	else if(str::strcasecmp("IMAGE_FORMAT_RGB323232F", arg) == 0) return IMAGE_FORMAT_RGB323232F;
+	else if(str::strcasecmp("IMAGE_FORMAT_RGBA32323232F", arg) == 0) return IMAGE_FORMAT_RGBA32323232F;
+	else if(str::strcasecmp("IMAGE_FORMAT_NV_DST16", arg) == 0) return IMAGE_FORMAT_NV_DST16;
+	else if(str::strcasecmp("IMAGE_FORMAT_NV_DST24", arg) == 0) return IMAGE_FORMAT_NV_DST24;
+	else if(str::strcasecmp("IMAGE_FORMAT_NV_INTZ", arg) == 0) return IMAGE_FORMAT_NV_INTZ;
+	else if(str::strcasecmp("IMAGE_FORMAT_NV_RAWZ", arg) == 0) return IMAGE_FORMAT_NV_RAWZ;
+	else if(str::strcasecmp("IMAGE_FORMAT_ATI_DST16", arg) == 0) return IMAGE_FORMAT_ATI_DST16;
+	else if(str::strcasecmp("IMAGE_FORMAT_ATI_DST24", arg) == 0) return IMAGE_FORMAT_ATI_DST24;
+	else if(str::strcasecmp("IMAGE_FORMAT_NV_NULL", arg) == 0) return IMAGE_FORMAT_NV_NULL;
+	else if(str::strcasecmp("IMAGE_FORMAT_ATI2N", arg) == 0) return IMAGE_FORMAT_ATI2N;
+	else if(str::strcasecmp("IMAGE_FORMAT_ATI1N", arg) == 0) return IMAGE_FORMAT_ATI1N;
+	else if(str::strcasecmp("IMAGE_FORMAT_COUNT", arg) == 0) return IMAGE_FORMAT_COUNT;
 	else return IMAGE_FORMAT_NONE;
 }
 
