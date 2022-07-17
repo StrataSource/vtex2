@@ -2,6 +2,7 @@
 #include <cstring>
 #include <cassert>
 #include <cstdlib>
+#include <algorithm>
 
 #include "action.hpp"
 #include "action_info.hpp"
@@ -9,6 +10,11 @@
 #include "common/util.hpp"
 
 using namespace vtex2;
+
+// Global flags
+namespace vtex2 {
+	bool verbose = false;
+}
 
 // Global list of actions
 static BaseAction* s_actions[] =
@@ -22,6 +28,8 @@ static bool arg_compare(const char* arg, const char* argname);
 
 [[noreturn]] static void show_help(int exitCode = 0);
 [[noreturn]] static void show_action_help(BaseAction* action, int exitCode = 0);
+
+
 
 int main(int argc, char** argv) {
 	bool parsingAction = false;
@@ -235,6 +243,25 @@ bool handle_option(int argc, int &argIndex, char** argv, ActionOption& opt) {
 				valueStr = nextArg("");
 			}
 			
+			// Validate choices if the requested option has them
+			if (!opt.m_choices.empty()) {
+				bool foundValid = false;
+				for (auto& c : opt.m_choices) {
+					if (valueStr == c) {
+						foundValid = true;
+						break;
+					}
+				}
+				
+				// Could not validate from list of valid choices
+				if (!foundValid) {
+					fprintf(stderr, "Bad value for option %s\nValid values are: ");
+					for (auto& c : opt.m_choices)
+						fprintf(stderr, "%s ", c.c_str());
+					return false;
+				}
+			}
+			
 			opt.m_value = valueStr;
 			return true;
 		}
@@ -306,12 +333,35 @@ void show_action_help(BaseAction* action, int exitCode) {
 	printf("\n  %s\n", action->get_help().c_str());
 	printf("\nOptions:\n");
 
-	for (auto& a : action->get_options().opts()) {
+	// Sort the options before display (ugly but works)
+	auto sortedOpts = action->get_options().opts();
+	std::sort(sortedOpts.begin(), sortedOpts.end(), [](const ActionOption& a, const ActionOption& b) {
+		auto a1 = a.m_name[0].length() > 0 ? a.m_name[0] : a.m_name[1];
+		auto b1 = b.m_name[0].length() > 0 ? b.m_name[0] : b.m_name[1];
+		return str::strcasecmp(a1.c_str(), b1.c_str()) < 0;
+	});
+	
+	for (auto& a : sortedOpts) {
+		// Format the short and long arg names like -short,--long
 		char args[256];
 		snprintf(args, sizeof(args), "%s%s%s", a.m_name[0].c_str(), 
 			(a.m_name[0].length()&&a.m_name[1].length()) ? "," : "", a.m_name[1].c_str());
-		
-		printf("  %-20s %s\n", args, a.m_desc.c_str());
+			
+		// Display choices (formatting hell right here!!!)
+		if (!a.m_choices.empty()) {
+			printf("  %s", args);
+			printf(" [");
+			for (int i = 0; i < a.m_choices.size(); ++i) {
+				printf("%s", a.m_choices[i].c_str());
+				if (i != a.m_choices.size()-1)
+					printf(", ");
+			}
+			printf("]\n%-23s%s\n", "", a.m_desc.c_str());
+		}
+		// No choices, just help info
+		else {
+			printf("  %-20s %s\n", args, a.m_desc.c_str());
+		}
 	}
 	printf("\n");
 	exit(exitCode);

@@ -12,6 +12,11 @@
 
 namespace vtex2 {
 	
+	/**
+	 * Global flags
+	 */
+	extern bool verbose;
+	
 	enum class OptType {
 		Float,			// Float type, may be scientific notation, normal or hex
 		Int,			// Integer type, 1e6, 0x399, etc
@@ -37,6 +42,7 @@ namespace vtex2 {
 		bool m_endOfLine = false;				// If true, this is an "end of line" argument which may accept multiple values
 		bool m_handled = false;					// Internal use only...
 		int m_numArgs = 1;
+		std::vector<std::string> m_choices;		// Valid choices - only implemented for strings for now!!!
 		
 		ActionOption& long_opt(const std::string& a) { m_name[1] = a; return *this; }
 		ActionOption& short_opt(const std::string& a) { m_name[0] = a; return *this; }
@@ -47,6 +53,11 @@ namespace vtex2 {
 		ActionOption& end_of_line(bool b) { m_endOfLine = b; return *this; }
 		ActionOption& num_args(int n) { m_numArgs = n; return *this; }
 		ActionOption& metavar(const std::string& meta) { m_name[0] = meta; return *this; }
+		ActionOption& choices(const std::initializer_list<std::string>& choices) {
+			for (auto& c : choices)
+				m_choices.push_back(c);
+			return *this;
+		}
 		
 		/**
 		 * Helper to get values

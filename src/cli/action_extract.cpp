@@ -1,4 +1,6 @@
 
+#include <filesystem>
+
 #include "action_extract.hpp"
 #include "common/util.hpp"
 #include "common/enums.hpp"
@@ -17,7 +19,7 @@ namespace opts {
 }
 
 std::string ActionExtract::get_help() const {
-	return "Displays info about a VTF file";
+	return "Converts a VTF into png, tga, jpeg, bmp or hdr image file";
 }
 
 const OptionList& ActionExtract::get_options() const {
@@ -29,7 +31,6 @@ const OptionList& ActionExtract::get_options() const {
 				.type(OptType::String)
 				.value("")
 				.help("File to place the output in")
-				.required(true)
 		);
 		
 		opts::format = opts.add( ActionOption()
@@ -37,7 +38,8 @@ const OptionList& ActionExtract::get_options() const {
 				.long_opt("--format")
 				.type(OptType::String)
 				.value("")
-				.help("Output format to use (png, jpeg, tga)")
+				.choices({"png", "jpeg", "jpg", "tga", "bmp", "hdr"})
+				.help("Output format to use")
 		);
 		
 		opts::file = opts.add( ActionOption()
@@ -62,42 +64,64 @@ const OptionList& ActionExtract::get_options() const {
 
 int ActionExtract::exec(const OptionList& opts) {
 	
-	auto file = opts.get(opts::file).get<std::string>();
-	auto output = opts.get(opts::output).get<std::string>();
+	std::filesystem::path file = opts.get(opts::file).get<std::string>();
+	std::filesystem::path output = opts.get(opts::output).get<std::string>();
+	
+	if (std::filesystem::is_directory(file)) {
+		for (auto dirent : std::filesystem::directory_iterator(file)) {
+			if (!extract_file(opts, dirent, ""))
+				return 1;
+		}
+	}
+	else {
+		return extract_file(opts, file, output) ? 0 : 1;
+	}
+	
+	return 0;
+}
+
+void ActionExtract::cleanup() {
+	delete file_;
+}
+
+
+bool ActionExtract::extract_file(const OptionList& opts, const std::filesystem::path& vtfPath, const std::filesystem::path& userOutputFile) {
+	if (!load_vtf(vtfPath))
+		return false;
+
 	auto format = opts.get(opts::format).get<std::string>();
 	auto mip = opts.get(opts::mip).get<int>();
 	
-	// Load off disk
-	std::uint8_t* buf = nullptr;
-	auto numBytes = util::read_file(file, buf);
-	auto bufCleanup = util::cleanup([&buf]{
-		delete [] buf;
-	});
-	
-	
-	if (numBytes == 0 || !buf) {
-		fprintf(stderr, "Could not open file '%s'!\n", file.c_str());
-		delete [] buf;
-		return 1;
+	// If the user provided output file is empty, we'll determine a default
+	auto outFile = userOutputFile;
+	if (userOutputFile.empty()) {
+		if (format.empty()) {
+			fprintf(stderr, "Missing --format parameter for batch processing\n");
+			return false;
+		}
+		
+		auto eFmt = imglib::image_get_format(format.c_str());
+		if (eFmt == imglib::FileFormat::None) {
+			fprintf(stderr, "Could not determine file format from --format parameter\n");
+			return false;
+		}
+		
+		// Now build a default file name
+		auto* ext = imglib::image_get_extension(imglib::image_get_format(format.c_str()));
+		outFile = vtfPath.filename().replace_extension(ext);
 	}
-	
-	// Create new file & load it with vtflib
-	file_ = new VTFLib::CVTFFile();
-	if (!file_->Load(buf, numBytes, false)) {
-		fprintf(stderr, "Failed to load VTF '%s': %s\n", file.c_str(),
-			vlGetLastError());
-		return 1;
-	}
-	
+
+	printf("Extracting to %s\n", outFile.c_str());
+
 	// Validate mipmap selection
 	if (mip > file_->GetMipmapCount()) {
 		fprintf(stderr, "Selected mip %d exceeds the total mip count of the image: %d\n", 
 			mip, file_->GetMipmapCount());
-		return 1;
+		return false;
 	}
 	
 	// Determine format based on output file extension 
-	std::string targetFormatName = str::get_ext(output.c_str());
+	std::string targetFormatName = str::get_ext(outFile.c_str());
 	if (!format.empty())
 		targetFormatName = format;
 	auto targetFmt = imglib::image_get_format(targetFormatName.c_str());
@@ -105,8 +129,8 @@ int ActionExtract::exec(const OptionList& opts) {
 	// Ensure target file format is valid
 	if (targetFmt == imglib::FileFormat::None) {
 		fprintf(stderr, "Could not determine file format from file '%s'. To explicitly choose a format, pass --format.\n",
-			output.c_str());
-		return 1;
+			outFile.c_str());
+		return false;
 	}
 	
 	vlUInt w, h, d;
@@ -138,7 +162,7 @@ int ActionExtract::exec(const OptionList& opts) {
 	if (!ok) {
 		fprintf(stderr, "Could not convert image format '%s' -> '%s'!\n", ImageFormatToString(file_->GetFormat()),
 			destIsFloat ? "RGBA32323232F" : "RGBA8888");
-		return 1;
+		return false;
 	}
 	
 	imglib::ImageData_t data {};
@@ -149,14 +173,39 @@ int ActionExtract::exec(const OptionList& opts) {
 	data.info.type = destIsFloat ? imglib::Float : imglib::UInt8;
 	data.data = imageData;
 	
-	if (!imglib::image_save(data, output.c_str(), targetFmt)) {
-		fprintf(stderr, "Could not save image to '%s'!\n", output.c_str());
-		return 1;
+	if (!imglib::image_save(data, outFile.c_str(), targetFmt)) {
+		fprintf(stderr, "Could not save image to '%s'!\n", outFile.c_str());
+		return false;
 	}
-	
-	return 0;
+
+	return true;
 }
 
-void ActionExtract::cleanup() {
-	delete file_;
+bool ActionExtract::load_vtf(const std::filesystem::path& vtfFile) {
+	// Cleanup any existing files 
+	if (file_)
+		delete file_;
+	
+	// Load off disk
+	std::uint8_t* buf = nullptr;
+	auto numBytes = util::read_file(vtfFile, buf);
+	auto bufCleanup = util::cleanup([&buf]{
+		delete [] buf;
+	});
+	
+	if (numBytes == 0 || !buf) {
+		fprintf(stderr, "Could not open file '%s'!\n", vtfFile.c_str());
+		delete [] buf;
+		return false;
+	}
+	
+	// Create new file & load it with vtflib
+	file_ = new VTFLib::CVTFFile();
+	if (!file_->Load(buf, numBytes, false)) {
+		fprintf(stderr, "Failed to load VTF '%s': %s\n", vtfFile.c_str(),
+			vlGetLastError());
+		return false;
+	}
+	
+	return true;
 }

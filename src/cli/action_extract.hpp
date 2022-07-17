@@ -1,4 +1,6 @@
 
+#include <filesystem>
+
 #include "action.hpp"
 
 namespace VTFLib {
@@ -19,6 +21,8 @@ namespace vtex2 {
 		int exec(const OptionList& opts) override;
 		void cleanup() override;
 		
+		bool extract_file(const OptionList& opts, const std::filesystem::path& vtfFile, const std::filesystem::path& outFile);
+		bool load_vtf(const std::filesystem::path& vtfFile);
 	private:
 		VTFLib::CVTFFile* file_ = nullptr;
 	};
