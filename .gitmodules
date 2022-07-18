@@ -1,3 +1,6 @@
 [submodule "external/vtflib"]
 	path = external/vtflib
 	url = https://github.com/JJL772/VTFLib
+[submodule "external/fmtlib"]
+	path = external/fmtlib
+	url = https://github.com/fmtlib/fmt

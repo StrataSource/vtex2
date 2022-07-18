@@ -57,4 +57,9 @@ namespace util {
 	private:
 		T m_func;
 	};
+	
+	template<class T, std::size_t N>
+	constexpr std::size_t ArraySize(T(&arr)[N]) {
+		return N;
+	}
 }

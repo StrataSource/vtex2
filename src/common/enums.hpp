@@ -24,3 +24,8 @@ VTFImageFormat ImageFormatFromString(const char* arg);
  * Convert VTF flags to a user friendly list of strings
  */
 std::vector<std::string> TextureFlagsToStringVector(std::uint32_t flags);
+
+/**
+ * Get a human readable name for the resource
+ */
+const char* GetResourceName(vlUInt resource);
