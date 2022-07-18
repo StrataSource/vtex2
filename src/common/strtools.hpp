@@ -47,4 +47,20 @@ namespace str {
 	#endif
 	}
 	
+	/**
+	 * Return pointer to the component of the path after the last path sep
+	 * some/path.vtf -> path.vtf
+	 * path.vtf -> path.vtf
+	 */
+	static inline const char* get_filename(const char* str) {
+		const char* lastSep = nullptr;
+		
+		for (const char* s = str; s && *s; ++s) {
+			if (*s == '/' || *s == '\\')
+				lastSep = s;
+		}
+		
+		return lastSep ? ++lastSep : str;
+	}
+	
 }

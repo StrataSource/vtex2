@@ -11,6 +11,9 @@
 
 #pragma once
 
+class QSpinBox;
+class QCheckBox;
+
 namespace vtfview {
 	
 	/**
@@ -20,7 +23,7 @@ namespace vtfview {
 		Q_OBJECT;
 		
 	public:
-		ViewerMainWindow(QWidget* pParent);
+		ViewerMainWindow(QWidget* pParent = nullptr);
 		
 		bool load_file(const char* path);
 		bool load_file(const void* data, size_t size);
@@ -29,6 +32,8 @@ namespace vtfview {
 		
 		inline auto* file() { return file_; }
 		inline const auto* file() const { return file_; }
+		
+		void mark_modified();
 		
 	protected:
 		void setup_ui();
@@ -82,8 +87,13 @@ namespace vtfview {
 		
 		void paintEvent(QPaintEvent* event) override;
 		
+		void set_frame(int f) { frame_ = f; repaint(); }
+		void set_face(int f) { face_ = f; repaint(); }
+		void set_mip(int f) { mip_ = f; repaint(); }
+		
 	private:
 		QImage image_;
+		void* imgBuf_ = nullptr;
 		VTFLib::CVTFFile* file_;
 		
 		float zoom_ = 1.0f;
@@ -104,7 +114,7 @@ namespace vtfview {
 	class ResourceWidget : public QWidget {
 		Q_OBJECT;
 	public:
-		ResourceWidget(QWidget* parent);
+		ResourceWidget(QWidget* parent = nullptr);
 		
 		void set_vtf(VTFLib::CVTFFile* file);
 		
@@ -112,6 +122,35 @@ namespace vtfview {
 		void setup_ui();
 		
 		QTableWidget* table_;
+	};
+	
+	/**
+	 * Viewer settings
+	 * Lets you select mip, frame, face, etc.
+	 */
+	class ImageSettingsWidget : public QWidget {
+		Q_OBJECT;
+	public:
+		ImageSettingsWidget(ImageViewWidget* viewer, QWidget* parent = nullptr);
+		
+		void set_vtf(VTFLib::CVTFFile* file);
+		
+	signals:
+		/**
+		 * Invoked when the VTF is modified in some way
+		 * ie by start frame being changed
+		 */
+		void fileModified();
+		
+	private:
+		void setup_ui(ImageViewWidget* viewer);
+		
+		QSpinBox* frame_ = nullptr;
+		QSpinBox* face_ = nullptr;
+		QSpinBox* mip_ = nullptr;
+		QSpinBox* startFrame_ = nullptr;
+		VTFLib::CVTFFile* file_ = nullptr;
+		std::unordered_map<uint32_t, QCheckBox*> flagChecks_;
 	};
 	
 }

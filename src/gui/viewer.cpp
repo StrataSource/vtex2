@@ -6,6 +6,12 @@
 #include <QDockWidget>
 #include <QPainter>
 #include <QHeaderView>
+#include <QSpinBox>
+#include <QPushButton>
+#include <QCheckBox>
+#include <QScrollArea>
+
+#include <iostream>
 
 #include "fmt/format.h"
 
@@ -16,6 +22,10 @@
 
 using namespace vtfview;
 using namespace VTFLib;
+
+//////////////////////////////////////////////////////////////////////////////////
+// ViewerMainWindow
+//////////////////////////////////////////////////////////////////////////////////
 
 ViewerMainWindow::ViewerMainWindow(QWidget* pParent) :
 	QMainWindow(pParent) {
@@ -31,6 +41,11 @@ bool ViewerMainWindow::load_file(const char* path) {
 		
 	bool ok = load_file(buffer, numRead);
 	delete buffer;
+	
+	setWindowTitle(
+		fmt::format(FMT_STRING("VTFView - [{}]"), str::get_filename(path)).c_str()
+	);
+	
 	return ok;
 }
 
@@ -59,8 +74,10 @@ void ViewerMainWindow::unload_file() {
 }
 
 void ViewerMainWindow::setup_ui() {
+	setWindowTitle("VTFView");
 	
 	setTabPosition(Qt::LeftDockWidgetArea, QTabWidget::North);
+	setTabPosition(Qt::RightDockWidgetArea, QTabWidget::North);
 	
 	// Info widget
 	auto* infoDock = new QDockWidget(tr("Info"), this);
@@ -69,7 +86,7 @@ void ViewerMainWindow::setup_ui() {
 	connect(this, &ViewerMainWindow::vtfFileChanged, infoWidget, &InfoWidget::update_info);
 
 	infoDock->setWidget(infoWidget);
-	addDockWidget(Qt::LeftDockWidgetArea, infoDock);
+	addDockWidget(Qt::RightDockWidgetArea, infoDock);
 	
 	// Resource list
 	auto* resDock = new QDockWidget(tr("Resources"), this);
@@ -78,10 +95,8 @@ void ViewerMainWindow::setup_ui() {
 	connect(this, &ViewerMainWindow::vtfFileChanged, resList, &ResourceWidget::set_vtf);
 	
 	resDock->setWidget(resList);
-	addDockWidget(Qt::LeftDockWidgetArea, resDock);
-	
-	tabifyDockWidget(infoDock, resDock);
-	
+	addDockWidget(Qt::RightDockWidgetArea, resDock);
+		
 	// Main image viewer 
 	auto* imageView = new ImageViewWidget(this);
 	
@@ -89,10 +104,32 @@ void ViewerMainWindow::setup_ui() {
 		imageView->set_vtf(file);
 	});
 	setCentralWidget(imageView);
+	
+	// Viewer settings
+	auto* viewerDock = new QDockWidget(tr("Viewer Settings"), this);
+	
+	auto* viewSettings = new ImageSettingsWidget(imageView, this);
+	connect(this, &ViewerMainWindow::vtfFileChanged, viewSettings, &ImageSettingsWidget::set_vtf);
+	connect(viewSettings, &ImageSettingsWidget::fileModified, this, &ViewerMainWindow::mark_modified);
+	
+	viewerDock->setWidget(viewSettings);
+	addDockWidget(Qt::LeftDockWidgetArea, viewerDock);
+	
+	// Tabify the docks 
+	tabifyDockWidget(infoDock, resDock);
 }
 
 void ViewerMainWindow::reset_state() {
 	dirty_ = false;
+}
+
+void ViewerMainWindow::mark_modified() {
+	dirty_ = true;
+	
+	auto title = windowTitle();
+	if (title.endsWith("*"))
+		return;
+	setWindowTitle(title + "*");
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -208,6 +245,11 @@ void ImageViewWidget::set_vtf(VTFLib::CVTFFile* file) {
 	
 	zoom_ = 1.f;
 	pos_ = {0,0};
+	
+	// Make the image fit if it doesn't
+	QSize sz(file->GetWidth(), file->GetHeight());
+	if (size().width() < sz.width() || size().height() < sz.height())
+		resize(sz);
 }
 
 void ImageViewWidget::paintEvent(QPaintEvent* event) {
@@ -219,20 +261,24 @@ void ImageViewWidget::paintEvent(QPaintEvent* event) {
 		
 	// Needs decode
 	if (frame_ != currentFrame_ || mip_ != currentMip_ || face_ != currentFace_) {
-		
 		const bool hasAlpha = CVTFFile::GetImageFormatInfo(file_->GetFormat()).uiAlphaBitsPerPixel > 0;
 		const VTFImageFormat format = hasAlpha ? IMAGE_FORMAT_RGBA8888 : IMAGE_FORMAT_RGB888;
 		auto size = file_->ComputeMipmapSize(file_->GetWidth(), file_->GetHeight(), 1, mip_, format);
 		
-		auto* data = static_cast<vlByte*>(malloc(size));
-		bool ok = CVTFFile::Convert(file_->GetData(frame_, face_, 0, mip_), data, imageWidth, imageHeight, file_->GetFormat(), format);
+		if (imgBuf_) {
+			free(imgBuf_);
+		}
+		// This buffer needs to persist- QImage does not own the mem you give it
+		imgBuf_ = static_cast<vlByte*>(malloc(size));
+
+		bool ok = CVTFFile::Convert(file_->GetData(frame_, face_, 0, mip_), (vlByte*)imgBuf_, imageWidth, imageHeight, file_->GetFormat(), format);
 			
 		if (!ok) {
-			fprintf(stderr, "Could not convert image for display.\n");
+			std::cerr << "Could not convert image for display.\n";
 			return;
 		}
 		
-		image_ = QImage(data, imageWidth, imageHeight, hasAlpha ? QImage::Format_RGBA8888 : QImage::Format_RGB888);
+		image_ = QImage((uchar*)imgBuf_, imageWidth, imageHeight, hasAlpha ? QImage::Format_RGBA8888 : QImage::Format_RGB888);
 		
 		currentFace_ = face_;
 		currentFrame_ = frame_;
@@ -289,4 +335,137 @@ void ResourceWidget::setup_ui() {
 	table_->setHorizontalHeaderItem(2, new QTableWidgetItem("Data Size"));
 	
 	layout->addWidget(table_);
+}
+
+//////////////////////////////////////////////////////////////////////////////////
+// Texture flag list
+//////////////////////////////////////////////////////////////////////////////////
+
+constexpr struct TextureFlag {
+	uint32_t flag;
+	const char* name;
+} TEXTURE_FLAGS[] = {
+	{TEXTUREFLAGS_POINTSAMPLE, "Point Sample"},
+	{TEXTUREFLAGS_TRILINEAR, "Trilinear"},
+	{TEXTUREFLAGS_CLAMPS, "Clamp S"},
+	{TEXTUREFLAGS_CLAMPT, "Clamp T"},
+	{TEXTUREFLAGS_CLAMPU, "Clamp U"},
+	{TEXTUREFLAGS_ANISOTROPIC, "Anisotropic"},
+	{TEXTUREFLAGS_HINT_DXT5, "Hint DXT5"},
+	{TEXTUREFLAGS_SRGB, "sRGB"},
+	{TEXTUREFLAGS_DEPRECATED_NOCOMPRESS, "Nocompress (Deprecated)"},
+	{TEXTUREFLAGS_NORMAL, "Normal"},
+	{TEXTUREFLAGS_NOMIP, "No MIP"},
+	{TEXTUREFLAGS_NOLOD, "No LOD"},
+	{TEXTUREFLAGS_MINMIP, "Min Mip"},
+	{TEXTUREFLAGS_PROCEDURAL, "Procedural"},
+	{TEXTUREFLAGS_ONEBITALPHA, "One-bit Alpha"},
+	{TEXTUREFLAGS_EIGHTBITALPHA, "Eight-bit Alpha"},
+	{TEXTUREFLAGS_ENVMAP, "Envmap"},
+	{TEXTUREFLAGS_RENDERTARGET, "Render Target"},
+	{TEXTUREFLAGS_DEPTHRENDERTARGET, "Depth Render Target"},
+	{TEXTUREFLAGS_NODEBUGOVERRIDE, "No Debug Override"},
+	{TEXTUREFLAGS_SINGLECOPY, "Single Copy"},
+	{TEXTUREFLAGS_DEPRECATED_ONEOVERMIPLEVELINALPHA, "One Over Mip Level Linear Alpha (Deprecated)"},
+	{TEXTUREFLAGS_DEPRECATED_PREMULTCOLORBYONEOVERMIPLEVEL, "Pre-multiply Colors by One Over Mip Level (Deprecated)"},
+	{TEXTUREFLAGS_DEPRECATED_NORMALTODUDV, "Normal To DuDv"},
+	{TEXTUREFLAGS_DEPRECATED_ALPHATESTMIPGENERATION, "Alpha Test Mip Generation (Deprecated)"},
+	{TEXTUREFLAGS_NODEPTHBUFFER, "No Depth Buffer"},
+	{TEXTUREFLAGS_DEPRECATED_NICEFILTERED, "Nice Filtered (Deprecated)"},
+	{TEXTUREFLAGS_VERTEXTEXTURE, "Vertex Texture"},
+	{TEXTUREFLAGS_SSBUMP, "SSBump"},
+	{TEXTUREFLAGS_DEPRECATED_UNFILTERABLE_OK, "Unfilterable OK (Deprecated)"},
+	{TEXTUREFLAGS_BORDER, "Border"},
+	{TEXTUREFLAGS_DEPRECATED_SPECVAR_RED, "Specvar Red (Deprecated)"},
+	{TEXTUREFLAGS_DEPRECATED_SPECVAR_ALPHA, "Specvar Alpha (Deprecated)"},
+};
+
+
+//////////////////////////////////////////////////////////////////////////////////
+// ImageSettingsWidget
+//////////////////////////////////////////////////////////////////////////////////
+ImageSettingsWidget::ImageSettingsWidget(ImageViewWidget* viewer, QWidget* parent) :
+	QWidget(parent) {
+	setup_ui(viewer);
+}
+
+void ImageSettingsWidget::setup_ui(ImageViewWidget* viewer) {
+	auto* layout = new QGridLayout(this);
+
+	int row = 0;
+	frame_ = new QSpinBox(this);
+	connect(frame_, &QSpinBox::textChanged, [viewer, this](const QString&) {
+		viewer->set_frame(frame_->value());
+	});
+	layout->addWidget(frame_, row, 1);
+	layout->addWidget(new QLabel("Frame:"), row, 0);
+
+	++row;
+	mip_ = new QSpinBox(this);
+	connect(mip_, &QSpinBox::textChanged, [viewer, this](const QString&) {
+		viewer->set_mip(mip_->value());
+	});
+	layout->addWidget(mip_, row, 1);
+	layout->addWidget(new QLabel("Mip:"), row, 0);
+	
+	++row;
+	face_ = new QSpinBox(this);
+	connect(face_, &QSpinBox::textChanged, [viewer, this](const QString&) {
+		viewer->set_face(face_->value());
+	});
+	layout->addWidget(face_, row, 1);
+	layout->addWidget(new QLabel("Face:"), row, 0);
+	
+	++row;
+	startFrame_ = new QSpinBox(this);
+	connect(startFrame_, &QSpinBox::textChanged, [viewer, this](const QString&) {
+		if (!file_)
+			return;
+		file_->SetStartFrame(startFrame_->value());
+		emit fileModified();
+	});
+	layout->addWidget(startFrame_, row, 1);
+	layout->addWidget(new QLabel("Start Frame:"), row, 0);
+	
+	// Flags list box
+	++row;
+	auto* flagsScroll = new QScrollArea(this);
+	auto* flagsGroup = new QGroupBox(tr("Flags"), this);
+	auto* flagsLayout = new QGridLayout(flagsGroup);
+	
+	for (auto& flag : TEXTURE_FLAGS) {
+		auto* check = new QCheckBox(flag.name, this);
+		check->setCheckable(true);
+		connect(check, &QCheckBox::stateChanged, [this, flag](int newState) {
+			if (!file_)
+				return;
+			file_->SetFlag((VTFImageFlag)flag.flag, newState);
+			emit fileModified();
+		});
+		flagChecks_.insert({flag.flag, check});
+		flagsLayout->addWidget(check);
+	}
+	
+	flagsScroll->setWidget(flagsGroup);
+	layout->addWidget(flagsScroll, row, 0, 1, 2);
+}
+
+void ImageSettingsWidget::set_vtf(VTFLib::CVTFFile* file) {
+	file_ = file;
+	startFrame_->setValue(file->GetStartFrame());
+	mip_->setValue(0);
+	frame_->setValue(file->GetStartFrame());
+	face_->setValue(0);
+	
+	// Configure ranges
+	mip_->setRange(0, file->GetMipmapCount());
+	frame_->setRange(1, file->GetFrameCount());
+	face_->setRange(1, file->GetFaceCount());
+	startFrame_->setRange(1, file->GetFrameCount());
+	
+	// Set the flags
+	uint32_t flags = file->GetFlags();
+	for (auto& f : TEXTURE_FLAGS) {
+		flagChecks_.find(f.flag)->second->setChecked(!!(flags & f.flag));
+	}
 }
