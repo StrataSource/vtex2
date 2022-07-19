@@ -147,7 +147,7 @@ bool ActionExtract::extract_file(const OptionList& opts, const std::filesystem::
 		outFile = vtfPath.parent_path() / vtfPath.filename().replace_extension(ext);
 	}
 
-	fmt::print("{} -> {}\n", vtfPath.c_str(), outFile.c_str());
+	fmt::print("{} -> {}\n", vtfPath.string(), outFile.string());
 
 	// Validate mipmap selection
 	if (mip > file_->GetMipmapCount()) {
@@ -165,7 +165,7 @@ bool ActionExtract::extract_file(const OptionList& opts, const std::filesystem::
 	// Ensure target file format is valid
 	if (targetFmt == imglib::FileFormat::None) {
 		std::cerr << fmt::format("Could not determine file format from file '{}'. To explicitly choose a format, pass --format.\n",
-			outFile.c_str());
+			outFile.string());
 		return false;
 	}
 	
@@ -215,7 +215,7 @@ bool ActionExtract::extract_file(const OptionList& opts, const std::filesystem::
 	data.data = imageData;
 	
 	if (!imglib::image_save(data, outFile.string().c_str(), targetFmt)) {
-		std::cerr << fmt::format("Could not save image to '{}'!\n", outFile.c_str());
+		std::cerr << fmt::format("Could not save image to '{}'!\n", outFile.string());
 		return false;
 	}
 
@@ -235,7 +235,7 @@ bool ActionExtract::load_vtf(const std::filesystem::path& vtfFile) {
 	});
 	
 	if (numBytes == 0 || !buf) {
-		std::cerr << fmt::format("Could not open file '{}'!\n", vtfFile.c_str());
+		std::cerr << fmt::format("Could not open file '{}'!\n", vtfFile.string());
 		delete [] buf;
 		return false;
 	}
@@ -243,7 +243,7 @@ bool ActionExtract::load_vtf(const std::filesystem::path& vtfFile) {
 	// Create new file & load it with vtflib
 	file_ = new VTFLib::CVTFFile();
 	if (!file_->Load(buf, numBytes, false)) {
-		std::cerr << fmt::format("Failed to load VTF '{}': {}\n", vtfFile.c_str(),
+		std::cerr << fmt::format("Failed to load VTF '{}': {}\n", vtfFile.string(),
 			vlGetLastError());
 		return false;
 	}

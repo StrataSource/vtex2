@@ -12,6 +12,9 @@ option(BUILD_GUI "Build the VTFViewer GUI" ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_BUILD_RPATH_USE_ORIGIN ON)
 
+# MT/MTd specification for Windows
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+
 # Build vtflib as static lib
 set(VTFLIB_STATIC ON)
 add_subdirectory(external/vtflib)
