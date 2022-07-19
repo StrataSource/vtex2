@@ -39,7 +39,8 @@ add_library(libcom STATIC ${COMMON_SRC})
 set(CLI_SRC
 		src/cli/main.cpp
 		src/cli/action_extract.cpp
-		src/cli/action_info.cpp)
+		src/cli/action_info.cpp
+		src/cli/action_convert.cpp)
 
 add_executable(vtex2 ${CLI_SRC})
 

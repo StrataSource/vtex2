@@ -29,3 +29,10 @@ std::vector<std::string> TextureFlagsToStringVector(std::uint32_t flags);
  * Get a human readable name for the resource
  */
 const char* GetResourceName(vlUInt resource);
+
+/**
+ * Similar to ImageFormatFromString but uses shorter strings 
+ * that the user may specify
+ * ie rgb888 instead of IMAGE_FORMAT_RGB888
+ */
+VTFImageFormat ImageFromatFromUserString(const char* userStr);

@@ -3,6 +3,7 @@
  */
 #pragma once
 
+#include <filesystem>
 #include <string>
 
 namespace imglib {
@@ -48,6 +49,7 @@ namespace imglib {
 	 * If this fails, it will return nullptr
 	 */
 	FILE* image_begin(const char* filePath);
+	inline FILE* image_begin(const std::filesystem::path& path) { return image_begin(path.string().c_str()); }
 	
 	/**
 	 * Return image info for the FP
