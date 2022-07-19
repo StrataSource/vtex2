@@ -35,9 +35,13 @@ namespace vtfview {
 		
 		void mark_modified();
 		
+		void save();
+		
 	protected:
 		void setup_ui();
 		void reset_state();
+		
+		void closeEvent(QCloseEvent* event) override;
 		
 	signals:
 		/**
@@ -48,7 +52,8 @@ namespace vtfview {
 		
 	private:
 		VTFLib::CVTFFile* file_;
-		bool dirty_;
+		bool dirty_ = false;
+		std::string path_;
 	};
 	
 	/**
@@ -151,6 +156,7 @@ namespace vtfview {
 		QSpinBox* startFrame_ = nullptr;
 		VTFLib::CVTFFile* file_ = nullptr;
 		std::unordered_map<uint32_t, QCheckBox*> flagChecks_;
+		bool settingFile_ = false;
 	};
 	
 }

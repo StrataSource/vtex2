@@ -10,6 +10,9 @@
 #include <QPushButton>
 #include <QCheckBox>
 #include <QScrollArea>
+#include <QMessageBox>
+#include <QCloseEvent>
+#include <QFileDialog>
 
 #include <iostream>
 
@@ -45,7 +48,8 @@ bool ViewerMainWindow::load_file(const char* path) {
 	setWindowTitle(
 		fmt::format(FMT_STRING("VTFView - [{}]"), str::get_filename(path)).c_str()
 	);
-	
+
+	path_ = path;
 	return ok;
 }
 
@@ -62,6 +66,7 @@ bool ViewerMainWindow::load_file(const void* data, size_t size) {
 bool ViewerMainWindow::load_file(VTFLib::CVTFFile* file) {
 	emit vtfFileChanged(file);
 	file_ = file;
+	path_ = "";
 	return true;
 }
 
@@ -71,6 +76,7 @@ void ViewerMainWindow::unload_file() {
 	emit vtfFileChanged(nullptr);
 	delete file_;
 	file_ = nullptr;
+	path_ = "";
 }
 
 void ViewerMainWindow::setup_ui() {
@@ -130,6 +136,51 @@ void ViewerMainWindow::mark_modified() {
 	if (title.endsWith("*"))
 		return;
 	setWindowTitle(title + "*");
+}
+
+void ViewerMainWindow::save() {
+	if (!dirty_)
+		return;
+	dirty_ = false;
+	
+	// Ask for a save directory if there's no active file
+	if (path_.empty()) {
+		auto name = QFileDialog::getSaveFileName(this, tr("Save as"), QString(), "Valve Texture File (*.vtf)");
+		if (name.isEmpty())
+			return;
+		path_ = name.toUtf8().data();
+	}
+	
+	if (!file_->Save(path_.c_str())) {
+		QMessageBox::warning(this, "Could not save file!",
+			fmt::format(FMT_STRING("Failed to save file: {}"), vlGetLastError()).c_str(),
+			QMessageBox::Ok);
+		return;
+	}
+	
+	// Clear out the window asterick
+	auto title = windowTitle();
+	title.remove(title.length()-1, 1);
+	setWindowTitle(title);
+}
+
+void ViewerMainWindow::closeEvent(QCloseEvent* event) {
+	if (dirty_) {
+		auto msgBox = new QMessageBox(QMessageBox::Icon::Question, tr("Quit without saving?"), tr("You have unsaved changes. Would you like to save?"), 
+			QMessageBox::NoButton, this);
+		msgBox->addButton(QMessageBox::Save);
+		msgBox->addButton(QMessageBox::Cancel);
+		msgBox->addButton(QMessageBox::Close);
+		auto r = msgBox->exec();
+		
+		if (r == QMessageBox::Cancel) {
+			event->ignore(); // Just eat the event
+			return;
+		}
+		else if (r == QMessageBox::Save) {
+			save();
+		}
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -422,7 +473,8 @@ void ImageSettingsWidget::setup_ui(ImageViewWidget* viewer) {
 		if (!file_)
 			return;
 		file_->SetStartFrame(startFrame_->value());
-		emit fileModified();
+		if (!settingFile_)
+			emit fileModified();
 	});
 	layout->addWidget(startFrame_, row, 1);
 	layout->addWidget(new QLabel("Start Frame:"), row, 0);
@@ -440,7 +492,8 @@ void ImageSettingsWidget::setup_ui(ImageViewWidget* viewer) {
 			if (!file_)
 				return;
 			file_->SetFlag((VTFImageFlag)flag.flag, newState);
-			emit fileModified();
+			if (!settingFile_)
+				emit fileModified();
 		});
 		flagChecks_.insert({flag.flag, check});
 		flagsLayout->addWidget(check);
@@ -451,6 +504,9 @@ void ImageSettingsWidget::setup_ui(ImageViewWidget* viewer) {
 }
 
 void ImageSettingsWidget::set_vtf(VTFLib::CVTFFile* file) {
+	// Hack to ensure we don't emit fileModified when setting defaults
+	settingFile_ = true;
+	
 	file_ = file;
 	startFrame_->setValue(file->GetStartFrame());
 	mip_->setValue(0);
@@ -468,4 +524,6 @@ void ImageSettingsWidget::set_vtf(VTFLib::CVTFFile* file) {
 	for (auto& f : TEXTURE_FLAGS) {
 		flagChecks_.find(f.flag)->second->setChecked(!!(flags & f.flag));
 	}
+	
+	settingFile_ = false;
 }
