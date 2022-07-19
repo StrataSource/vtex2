@@ -10,15 +10,6 @@
 
 #include "strtools.hpp"
 
-/** === Portability aids === **/
-
-#define _stricmp dont_use__stricmp
-#define stricmp dont_use_stricmp
-
-#ifdef _MSC_VER
-#define strcasecmp _stricmp
-#endif
-
 /******************************/
 namespace util {
 

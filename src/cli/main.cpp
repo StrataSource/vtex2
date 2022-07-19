@@ -193,11 +193,11 @@ bool handle_option(int argc, int &argIndex, char** argv, ActionOption& opt) {
 		case OptType::Bool:
 		{
 			if (split_arg(arg, valueStr)) {
-				if (!strcasecmp(valueStr.c_str(), "false")) {
+				if (!str::strcasecmp(valueStr.c_str(), "false")) {
 					opt.m_value = false;
 					return true;
 				}
-				else if (!strcasecmp(valueStr.c_str(), "true")) {
+				else if (!str::strcasecmp(valueStr.c_str(), "true")) {
 					opt.m_value = true;
 					return true;
 				}
