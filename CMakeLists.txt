@@ -17,6 +17,8 @@ set(VTFLIB_STATIC ON)
 add_subdirectory(external/vtflib)
 add_subdirectory(external/fmtlib)
 
+add_definitions(-DVTFLIB_STATIC=1)
+
 ##############################
 # Common code
 ##############################

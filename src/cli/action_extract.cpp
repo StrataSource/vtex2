@@ -157,7 +157,7 @@ bool ActionExtract::extract_file(const OptionList& opts, const std::filesystem::
 	}
 	
 	// Determine format based on output file extension 
-	std::string targetFormatName = str::get_ext(outFile.c_str());
+	std::string targetFormatName = str::get_ext(outFile.string().c_str());
 	if (!format.empty())
 		targetFormatName = format;
 	auto targetFmt = imglib::image_get_format(targetFormatName.c_str());
@@ -214,7 +214,7 @@ bool ActionExtract::extract_file(const OptionList& opts, const std::filesystem::
 	data.info.type = destIsFloat ? imglib::Float : imglib::UInt8;
 	data.data = imageData;
 	
-	if (!imglib::image_save(data, outFile.c_str(), targetFmt)) {
+	if (!imglib::image_save(data, outFile.string().c_str(), targetFmt)) {
 		std::cerr << fmt::format("Could not save image to '{}'!\n", outFile.c_str());
 		return false;
 	}
@@ -229,7 +229,7 @@ bool ActionExtract::load_vtf(const std::filesystem::path& vtfFile) {
 	
 	// Load off disk
 	std::uint8_t* buf = nullptr;
-	auto numBytes = util::read_file(vtfFile, buf);
+	auto numBytes = util::read_file(vtfFile.string(), buf);
 	auto bufCleanup = util::cleanup([&buf]{
 		delete [] buf;
 	});
