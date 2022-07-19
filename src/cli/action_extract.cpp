@@ -1,6 +1,7 @@
 
 #include <filesystem>
 #include <iostream>
+#include <functional>
 
 #include "fmt/format.h"
 
@@ -19,6 +20,8 @@ namespace opts {
 	static int file;
 	static int format;
 	static int mip;
+	static int recursive;
+	static int noalpha;
 }
 
 std::string ActionExtract::get_help() const {
@@ -61,6 +64,22 @@ const OptionList& ActionExtract::get_options() const {
 				.value(0)
 				.help("Mipmap to extract from image")
 		);
+		
+		opts::recursive = opts.add( ActionOption()
+				.short_opt("-r")
+				.long_opt("--recursive")
+				.type(OptType::Bool)
+				.value(false)
+				.help("Recursively process directories")
+		);
+		
+		opts::noalpha = opts.add( ActionOption()
+				.short_opt("-na")
+				.long_opt("--no-alpha")
+				.type(OptType::Bool)
+				.value(false)
+				.help("Exclude alpha channel from converted image")
+		);
 	};
 	return opts;
 }
@@ -69,12 +88,25 @@ int ActionExtract::exec(const OptionList& opts) {
 	
 	std::filesystem::path file = opts.get(opts::file).get<std::string>();
 	std::filesystem::path output = opts.get(opts::output).get<std::string>();
+	const bool recursive = opts.get(opts::recursive).get<bool>();
 	
 	if (std::filesystem::is_directory(file)) {
-		for (auto dirent : std::filesystem::directory_iterator(file)) {
-			if (!extract_file(opts, dirent, ""))
-				return 1;
-		}
+		// Recursively process dirs
+		std::function<bool(const std::filesystem::path&)> processDir = 
+			[&opts, &processDir, this, recursive](const std::filesystem::path& path) {
+			auto it = std::filesystem::directory_iterator(path);
+			for (auto& dirent : it) {
+				if (dirent.is_directory() && !processDir(dirent))
+					return false;
+				// check that we're actually a VTF
+				if (dirent.path().extension() != ".vtf")
+					continue;
+				if (!extract_file(opts, dirent, ""))
+					return false;
+			}
+			return true;
+		};
+		return processDir(file) ? 0 : 1;
 	}
 	else {
 		return extract_file(opts, file, output) ? 0 : 1;
@@ -94,7 +126,8 @@ bool ActionExtract::extract_file(const OptionList& opts, const std::filesystem::
 
 	auto format = opts.get(opts::format).get<std::string>();
 	auto mip = opts.get(opts::mip).get<int>();
-	
+	const bool noalpha = opts.get(opts::noalpha).get<bool>();
+
 	// If the user provided output file is empty, we'll determine a default
 	auto outFile = userOutputFile;
 	if (userOutputFile.empty()) {
@@ -111,7 +144,7 @@ bool ActionExtract::extract_file(const OptionList& opts, const std::filesystem::
 		
 		// Now build a default file name
 		auto* ext = imglib::image_get_extension(imglib::image_get_format(format.c_str()));
-		outFile = vtfPath.filename().replace_extension(ext);
+		outFile = vtfPath.parent_path() / vtfPath.filename().replace_extension(ext);
 	}
 
 	fmt::print("{} -> {}\n", vtfPath.c_str(), outFile.c_str());
@@ -140,7 +173,11 @@ bool ActionExtract::extract_file(const OptionList& opts, const std::filesystem::
 	file_->ComputeMipmapDimensions(file_->GetWidth(), file_->GetHeight(), file_->GetDepth(), mip, w, h, d);
 	
 	auto formatInfo = file_->GetImageFormatInfo(file_->GetFormat());
-	int comps = 4; // Convered output file will always have alpha
+	int comps = formatInfo.uiAlphaBitsPerPixel > 0 ? 4 : 3;
+	
+	// Do we want to exclude alpha channel??
+	if (noalpha)
+		comps = 3;
 	
 	// Allocate buffer for image data
 	vlByte* imageData = nullptr;
@@ -154,12 +191,13 @@ bool ActionExtract::extract_file(const OptionList& opts, const std::filesystem::
 	if (destIsFloat) {
 		imageData = static_cast<vlByte*>(malloc(w * h * comps * sizeof(float)));
 		ok = VTFLib::CVTFFile::Convert(file_->GetData(0, 0, 0, mip), imageData, w, h, file_->GetFormat(), 
-			IMAGE_FORMAT_RGBA32323232F);
+			comps == 3 ? IMAGE_FORMAT_RGB323232F : IMAGE_FORMAT_RGBA32323232F);
 	}
 	else {
-		comps = 3;
+		//comps = 3;
 		imageData = static_cast<vlByte*>(malloc(w * h * comps * sizeof(uint8_t)));
-		ok = VTFLib::CVTFFile::Convert(file_->GetData(0, 0, 0, mip), imageData, w, h, file_->GetFormat(), IMAGE_FORMAT_RGB888);
+		ok = VTFLib::CVTFFile::Convert(file_->GetData(0, 0, 0, mip), imageData, w, h, file_->GetFormat(), comps == 3 ? IMAGE_FORMAT_RGB888 :
+			IMAGE_FORMAT_RGBA8888);
 	}
 	
 	if (!ok) {

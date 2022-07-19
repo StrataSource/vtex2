@@ -104,7 +104,7 @@ int ActionInfo::exec(const OptionList& opts) {
 		auto flags = TextureFlagsToStringVector(file_->GetFlags());
 		fmt::print(FMT_STRING("Flags: 0x{:X}\n"), file_->GetFlags());
 		for (auto& fl : flags) {
-			fmt::print(FMT_STRING("    %s\n"), fl);
+			fmt::print(FMT_STRING("    {}\n"), fl);
 		}
 		
 		fmt::print(FMT_STRING("Bumpscale: {}\n"), file_->GetBumpmapScale());
