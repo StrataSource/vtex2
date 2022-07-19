@@ -108,16 +108,16 @@ bool imglib::image_save(const ImageData_t& data, const char* file, FileFormat fo
 		
 		// Write the stuff out
 		if (format == Png) {
-			bOk |= !!stbi_write_png(file, data.info.w, data.info.h, data.info.comps, dataToUse, 0);
+			bOk = !!stbi_write_png(file, data.info.w, data.info.h, data.info.comps, dataToUse, 0);
 		}
 		else if (format == Tga) {
-			bOk |= !!stbi_write_tga(file, data.info.w, data.info.h, data.info.comps, dataToUse);
+			bOk = !!stbi_write_tga(file, data.info.w, data.info.h, data.info.comps, dataToUse);
 		}
 		else if (format == Jpeg) {
-			bOk != !!stbi_write_jpg(file, data.info.w, data.info.h, data.info.comps, dataToUse, 100);
+			bOk = !!stbi_write_jpg(file, data.info.w, data.info.h, data.info.comps, dataToUse, 100);
 		}
 		else if (format == Bmp) {
-			bOk |= !!stbi_write_bmp(file, data.info.w, data.info.h, data.info.comps, dataToUse);
+			bOk = !!stbi_write_bmp(file, data.info.w, data.info.h, data.info.comps, dataToUse);
 		}
 		
 		if(dataIsOurs)

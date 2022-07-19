@@ -1,5 +1,8 @@
 
 #include <filesystem>
+#include <iostream>
+
+#include "fmt/format.h"
 
 #include "action_extract.hpp"
 #include "common/util.hpp"
@@ -96,13 +99,13 @@ bool ActionExtract::extract_file(const OptionList& opts, const std::filesystem::
 	auto outFile = userOutputFile;
 	if (userOutputFile.empty()) {
 		if (format.empty()) {
-			fprintf(stderr, "Missing --format parameter for batch processing\n");
+			std::cerr << "Missing --format parameter for batch processing\n";
 			return false;
 		}
 		
 		auto eFmt = imglib::image_get_format(format.c_str());
 		if (eFmt == imglib::FileFormat::None) {
-			fprintf(stderr, "Could not determine file format from --format parameter\n");
+			std::cerr << "Could not determine file format from --format parameter\n";
 			return false;
 		}
 		
@@ -111,11 +114,11 @@ bool ActionExtract::extract_file(const OptionList& opts, const std::filesystem::
 		outFile = vtfPath.filename().replace_extension(ext);
 	}
 
-	printf("Extracting to %s\n", outFile.c_str());
+	fmt::print("{} -> {}\n", vtfPath.c_str(), outFile.c_str());
 
 	// Validate mipmap selection
 	if (mip > file_->GetMipmapCount()) {
-		fprintf(stderr, "Selected mip %d exceeds the total mip count of the image: %d\n", 
+		std::cerr << fmt::format("Selected mip {} exceeds the total mip count of the image: {}\n", 
 			mip, file_->GetMipmapCount());
 		return false;
 	}
@@ -128,7 +131,7 @@ bool ActionExtract::extract_file(const OptionList& opts, const std::filesystem::
 	
 	// Ensure target file format is valid
 	if (targetFmt == imglib::FileFormat::None) {
-		fprintf(stderr, "Could not determine file format from file '%s'. To explicitly choose a format, pass --format.\n",
+		std::cerr << fmt::format("Could not determine file format from file '{}'. To explicitly choose a format, pass --format.\n",
 			outFile.c_str());
 		return false;
 	}
@@ -160,7 +163,7 @@ bool ActionExtract::extract_file(const OptionList& opts, const std::filesystem::
 	}
 	
 	if (!ok) {
-		fprintf(stderr, "Could not convert image format '%s' -> '%s'!\n", ImageFormatToString(file_->GetFormat()),
+		std::cerr << fmt::format("Could not convert image format '{}' -> '{}'!\n", ImageFormatToString(file_->GetFormat()),
 			destIsFloat ? "RGBA32323232F" : "RGBA8888");
 		return false;
 	}
@@ -174,7 +177,7 @@ bool ActionExtract::extract_file(const OptionList& opts, const std::filesystem::
 	data.data = imageData;
 	
 	if (!imglib::image_save(data, outFile.c_str(), targetFmt)) {
-		fprintf(stderr, "Could not save image to '%s'!\n", outFile.c_str());
+		std::cerr << fmt::format("Could not save image to '{}'!\n", outFile.c_str());
 		return false;
 	}
 
@@ -194,7 +197,7 @@ bool ActionExtract::load_vtf(const std::filesystem::path& vtfFile) {
 	});
 	
 	if (numBytes == 0 || !buf) {
-		fprintf(stderr, "Could not open file '%s'!\n", vtfFile.c_str());
+		std::cerr << fmt::format("Could not open file '{}'!\n", vtfFile.c_str());
 		delete [] buf;
 		return false;
 	}
@@ -202,7 +205,7 @@ bool ActionExtract::load_vtf(const std::filesystem::path& vtfFile) {
 	// Create new file & load it with vtflib
 	file_ = new VTFLib::CVTFFile();
 	if (!file_->Load(buf, numBytes, false)) {
-		fprintf(stderr, "Failed to load VTF '%s': %s\n", vtfFile.c_str(),
+		std::cerr << fmt::format("Failed to load VTF '{}': {}\n", vtfFile.c_str(),
 			vlGetLastError());
 		return false;
 	}

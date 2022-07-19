@@ -3,6 +3,9 @@
 #include <cassert>
 #include <cstdlib>
 #include <algorithm>
+#include <iostream>
+
+#include "fmt/format.h"
 
 #include "action.hpp"
 #include "action_info.hpp"
@@ -54,7 +57,7 @@ int main(int argc, char** argv) {
 			
 			// If the action parsing failed, print an error & help info
 			if (!action) {
-				printf("Unknown action '%s'!\n", arg);
+				std::cerr << fmt::format("Unknown action '{}'!\n", arg);
 				show_help(1);
 			}
 			
@@ -98,7 +101,7 @@ int main(int argc, char** argv) {
 				}
 				// Must be bad opt!
 				else {
-					fprintf(stderr, "Unexpected argument '%s'!\n", arg);
+					std::cerr << fmt::format("Unexpected argument '{}'!\n", arg);
 					show_help(1);
 				}
 				break;
@@ -123,14 +126,14 @@ int main(int argc, char** argv) {
 	
 	// No action passed? 
 	if (!action) {
-		fprintf(stderr, "No action specified!\n");
+		std::cerr << "No action specified!\n";
 		show_help(1);
 	}
 	
 	// Verify we have the min required args
 	for (auto& o : opts.opts()) {
 		if (!o.m_optional && !o.m_handled) {
-			fprintf(stderr, "Missing required argument '%s'!\n", o.m_name[0].c_str());
+			std::cerr << fmt::format("Missing required argument '{}'!\n", o.m_name[0]);
 			show_action_help(action, 1);
 		}
 	}
@@ -203,7 +206,7 @@ bool handle_option(int argc, int &argIndex, char** argv, ActionOption& opt) {
 				opt.m_value = true; // Empty argument string indicates true, since we're literally just a flag.
 				return true;
 			}
-			fprintf(stderr, "Bad argument value '%s' for argument '%s'!\n", valueStr.c_str(), arg);
+			std::cerr << fmt::format("Bad argument value '{}' for argument '{}'!\n", valueStr, arg);
 			return false;
 		}
 		case OptType::Float:
@@ -214,7 +217,7 @@ bool handle_option(int argc, int &argIndex, char** argv, ActionOption& opt) {
 			
 			auto val = std::strtod(valueStr.c_str(), nullptr);
 			if (errno != 0) {
-				fprintf(stderr, "Bad argument value '%s' for argument '%s'\n", valueStr.c_str(), arg);
+				std::cerr << fmt::format("Bad argument value '{}' for argument '{}'\n", valueStr, arg);
 				return false;
 			}
 			opt.m_value = (float)val;
@@ -231,7 +234,7 @@ bool handle_option(int argc, int &argIndex, char** argv, ActionOption& opt) {
 				base = 16;
 			auto val = std::strtol(valueStr.c_str(), nullptr, base);
 			if (errno != 0) {
-				fprintf(stderr, "Bad argument value '%s' for argument '%s'\n", valueStr.c_str(), arg);
+				std::cerr << fmt::format("Bad argument value '{}' for argument '{}'\n", valueStr, arg);
 				return false;
 			}
 			opt.m_value = (int)val;
@@ -255,9 +258,9 @@ bool handle_option(int argc, int &argIndex, char** argv, ActionOption& opt) {
 				
 				// Could not validate from list of valid choices
 				if (!foundValid) {
-					fprintf(stderr, "Bad value for option %s\nValid values are: ");
+					std::cerr << fmt::format("Bad value for option {}\nValid values are: ", arg);
 					for (auto& c : opt.m_choices)
-						fprintf(stderr, "%s ", c.c_str());
+						std::cerr << fmt::format("{} ", c);
 					return false;
 				}
 			}
