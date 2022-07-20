@@ -16,6 +16,7 @@
 #include "action_convert.hpp"
 #include "common/enums.hpp"
 #include "common/image.hpp"
+#include "common/util.hpp"
 
 using namespace VTFLib;
 using namespace vtex2;
@@ -126,16 +127,12 @@ bool ActionConvert::process_file(const OptionList& opts, const std::filesystem::
 	}
 	
 	auto format = ImageFromatFromUserString(formatStr.c_str());
-	if (format == IMAGE_FORMAT_NONE) {
-		std::cerr << fmt::format("Invalid pixel format: '{}'\n", formatStr);
-		return false;
-	}
 	
 	auto* vtfFile = new CVTFFile();
-	add_image_data(srcFile, vtfFile);
+	add_image_data(srcFile, vtfFile, format);
 	
 	if (!vtfFile->Save(outFile.string().c_str())) {
-		std::cerr << fmt::format("Could not save file {}\n", outFile.string());
+		std::cerr << fmt::format("Could not save file {}: {}\n", outFile.string(), vlGetLastError());
 		return false;
 	}
 	fmt::print("{} -> {}\n", srcFile.string(), outFile.string());
@@ -145,19 +142,39 @@ bool ActionConvert::process_file(const OptionList& opts, const std::filesystem::
 }
 
 // Add base image info. Lowest mip level.
-bool ActionConvert::add_image_data(const std::filesystem::path& imageSrc, VTFLib::CVTFFile* file) {
+bool ActionConvert::add_image_data(const std::filesystem::path& imageSrc, VTFLib::CVTFFile* file, VTFImageFormat format) {
 	
 	auto image = imglib::image_begin(imageSrc);
 	if (!image)
 		return false;
 		
 	auto data = imglib::image_load(image);
+	util::cleanup dataCleanup([&](){
+		imglib::image_free(data);
+		imglib::image_end(image);
+	});
 	
-	file->Create(data.info.w, data.info.h, 1, 1, 1, format_for_image(data.info));
-	file->SetData(1, 1, 1, 0, (vlByte*)data.data);
+	auto dataFormat = format_for_image(data.info);
+	vlByte* dest = nullptr;
+	// Convert to requested format, if possible.
+	if (format != IMAGE_FORMAT_NONE) {
+		auto fmtInfo = CVTFFile::GetImageFormatInfo(format);
+		dest = (vlByte*)malloc(data.info.w * data.info.h * fmtInfo.uiBytesPerPixel);
+		if (!CVTFFile::Convert((vlByte*)data.data, dest, data.info.w, data.info.h, dataFormat, format)) {
+			std::cerr << fmt::format("Could not convert from {} to {}!\n", 
+				ImageFormatToString(dataFormat), ImageFormatToString(format));
+			free(dest);
+			return false;
+		}
+	}
+	else {
+		format = dataFormat;
+	}
 	
-	imglib::image_end(image);
-	imglib::image_free(data);
+	file->Create(data.info.w, data.info.h, 1, 1, 1, format);
+	file->SetData(1, 1, 1, 0, dest ? dest : (vlByte*)data.data);
+	
+	free(dest);
 	
 	return true;
 }
