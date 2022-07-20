@@ -1,5 +1,7 @@
 <!DOCTYPE RCC><RCC version="1.0">
-<qresource prefix="resource">
+<qresource prefix="/">
 	<file>chaos.png</file>
+	<file>zoom-minus.svg</file>
+	<file>zoom-plus.svg</file>
 </qresource>
 </RCC>

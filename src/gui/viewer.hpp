@@ -15,6 +15,7 @@ class QSpinBox;
 class QCheckBox;
 
 namespace vtfview {
+	class ImageViewWidget;
 	
 	/**
 	 * Main window container for the VTF viewer
@@ -60,6 +61,7 @@ namespace vtfview {
 		VTFLib::CVTFFile* file_ = nullptr;
 		bool dirty_ = false;
 		std::string path_;
+		ImageViewWidget* viewer_ = nullptr;
 	};
 	
 	/**
@@ -102,7 +104,11 @@ namespace vtfview {
 		void set_face(int f) { face_ = f; repaint(); }
 		void set_mip(int f) { mip_ = f; repaint(); }
 		
+		void zoom(float amount);
+		
 	private:
+		void update_size();
+	
 		QImage image_;
 		void* imgBuf_ = nullptr;
 		VTFLib::CVTFFile* file_ = nullptr;

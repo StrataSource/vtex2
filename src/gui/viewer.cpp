@@ -19,6 +19,7 @@
 #include <QStyle>
 
 #include <iostream>
+#include <cfloat>
 
 #include "fmt/format.h"
 
@@ -109,17 +110,23 @@ void ViewerMainWindow::setup_ui() {
 	addDockWidget(Qt::RightDockWidgetArea, resDock);
 		
 	// Main image viewer 
-	auto* imageView = new ImageViewWidget(this);
+	auto* scroller = new QScrollArea(this);
+	viewer_ = new ImageViewWidget(this);
+	scroller->setAlignment(Qt::AlignCenter);
 	
-	connect(this, &ViewerMainWindow::vtfFileChanged, [imageView](VTFLib::CVTFFile* file) {
-		imageView->set_vtf(file);
+	connect(this, &ViewerMainWindow::vtfFileChanged, [this](VTFLib::CVTFFile* file) {
+		viewer_->set_vtf(file);
 	});
-	setCentralWidget(imageView);
+	
+	scroller->setVisible(true);
+	scroller->setWidget(viewer_);
+	
+	setCentralWidget(scroller);
 	
 	// Viewer settings
 	auto* viewerDock = new QDockWidget(tr("Viewer Settings"), this);
 	
-	auto* viewSettings = new ImageSettingsWidget(imageView, this);
+	auto* viewSettings = new ImageSettingsWidget(viewer_, this);
 	connect(this, &ViewerMainWindow::vtfFileChanged, viewSettings, &ImageSettingsWidget::set_vtf);
 	connect(viewSettings, &ImageSettingsWidget::fileModified, this, &ViewerMainWindow::mark_modified);
 	
@@ -149,8 +156,13 @@ void ViewerMainWindow::setup_menubar() {
 	toolBar->addAction(style()->standardIcon(QStyle::SP_BrowserReload), "Reload File", [this]() {
 		this->reload_file();
 	});
-	
 	toolBar->addSeparator();
+	toolBar->addAction(QIcon::fromTheme("zoom-in", QIcon(":/zoom-plus.svg")), "Zoom In", [this]() {
+		viewer_->zoom(.1f);
+	});
+	toolBar->addAction(QIcon::fromTheme("zoom-out", QIcon(":/zoom-minus.svg")), "Zoom Out", [this]() {
+		viewer_->zoom(-.1f);
+	});
 	
 	// File menu
 	auto* fileMenu = menuBar()->addMenu(tr("File"));
@@ -431,10 +443,7 @@ void ImageViewWidget::set_vtf(VTFLib::CVTFFile* file) {
 	if (!file)
 		return;
 	
-	// Make the image fit if it doesn't
-	QSize sz(file->GetWidth(), file->GetHeight());
-	if (size().width() < sz.width() || size().height() < sz.height())
-		resize(sz);
+	update_size();
 }
 
 void ImageViewWidget::paintEvent(QPaintEvent* event) {
@@ -473,8 +482,28 @@ void ImageViewWidget::paintEvent(QPaintEvent* event) {
 		currentMip_ = mip_;
 	}
 	
-	QPoint center = QPoint(width()/2, height()/2) - QPoint(imageWidth/2, imageHeight/2);
-	painter.drawImage(center + pos_, image_);
+	QPoint destpt = QPoint(width()/2, height()/2) - QPoint((imageWidth*zoom_)/2, (imageHeight*zoom_)/2) + pos_;
+	QRect target = QRect(destpt.x(), destpt.y(), image_.width() * zoom_, image_.height() * zoom_);
+	
+	painter.drawImage(target, image_, QRect(0, 0, image_.width(), image_.height()));
+}
+
+void ImageViewWidget::zoom(float amount) {
+	if (amount == 0)
+		return; // Skip expensive repaint
+	zoom_ += amount;
+	if (zoom_ < 0.1f)
+		zoom_ = 0.1f;
+	update_size();
+}
+
+void ImageViewWidget::update_size() {
+	if (!file_)
+		return;
+	
+	// Resize widget to be the same size as the image
+	QSize sz(file_->GetWidth() * zoom_, file_->GetHeight() * zoom_);
+	resize(sz);
 }
 
 //////////////////////////////////////////////////////////////////////////////////

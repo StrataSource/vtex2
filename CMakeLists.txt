@@ -53,7 +53,8 @@ if (BUILD_GUI)
 
 	set(VIEWER_SRC
 			src/gui/main.cpp
-			src/gui/viewer.cpp)
+			src/gui/viewer.cpp
+			res/resource.qrc)
 			
 	add_executable(vtfview ${VIEWER_SRC})
 endif()
@@ -71,7 +72,7 @@ if (BUILD_GUI)
 	target_link_libraries(vtfview PRIVATE vtflib libcom fmt::fmt)
 	target_include_directories(vtfview PRIVATE src external)
 
-	find_package(Qt5 REQUIRED COMPONENTS Widgets Core Gui)
-	target_link_libraries(vtfview PRIVATE Qt5::Widgets Qt5::Core Qt5::Gui)
+	find_package(Qt5 REQUIRED COMPONENTS Widgets Core Gui Svg)
+	target_link_libraries(vtfview PRIVATE Qt5::Widgets Qt5::Core Qt5::Gui Qt5::Svg)
 	target_include_directories(vtfview PRIVATE ${QT_INCLUDE} ${QT_INCLUDE}/QtWidgets ${QT_INCLUDE}/QtGui ${QT_INCLUDE}/QtCore)
 endif()
