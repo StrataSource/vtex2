@@ -26,6 +26,13 @@ namespace opts {
 	static int format;
 	static int file;
 	static int recursive;
+	static int mips;
+	static int normal;
+	static int clamps, clampt, clampu;
+	static int pointsample, trilinear;
+	static int startframe, bumpscale;
+	static int gammacorrect, srgb;
+	static int thumbnail;
 }
 
 static VTFImageFormat format_for_image(const imglib::ImageInfo_t& info);
@@ -81,6 +88,93 @@ const OptionList& ActionConvert::get_options() const {
 				.value(false)
 				.help("Recursively process directories")
 		);
+		
+		opts::normal = opts.add( ActionOption()
+				.short_opt("-n")
+				.long_opt("--normal")
+				.type(OptType::Bool)
+				.value(false)
+				.help("Create a normal map")
+		);
+		
+		opts::clamps = opts.add( ActionOption()
+				.long_opt("--clamps")
+				.type(OptType::Bool)
+				.value(false)
+				.help("Clamp on S axis")
+		);
+		
+		opts::clampt = opts.add( ActionOption()
+				.long_opt("--clampt")
+				.type(OptType::Bool)
+				.value(false)
+				.help("Clamp on T axis")
+		);
+		
+		opts::clampu = opts.add( ActionOption()
+				.long_opt("--clampu")
+				.type(OptType::Bool)
+				.value(false)
+				.help("Clamp on U axis")
+		);
+		
+		opts::pointsample = opts.add( ActionOption()
+				.long_opt("--pointsample")
+				.type(OptType::Bool)
+				.value(false)
+				.help("Set point sampling method")
+		);
+
+		opts::trilinear = opts.add( ActionOption()
+				.long_opt("--trilinear")
+				.type(OptType::Bool)
+				.value(false)
+				.help("Set trilinear sampling method")
+		);
+		
+		opts::mips = opts.add( ActionOption()
+				.short_opt("-m")
+				.long_opt("--mips")
+				.type(OptType::Int)
+				.value(10)
+				.help("Number of mips to generate")
+		);
+		
+		opts::startframe = opts.add( ActionOption()
+				.long_opt("--start-frame")
+				.type(OptType::Int)
+				.value(0)
+				.help("Animation frame to start on")
+		);
+		
+		opts::bumpscale = opts.add( ActionOption()
+				.long_opt("--bumpscale")
+				.type(OptType::Float)
+				.value(0)
+				.help("Bumpscale")
+		);
+		
+		opts::gammacorrect = opts.add( ActionOption()
+				.long_opt("--gamma-correct")
+				.type(OptType::Float)
+				.value(0)
+				.help("Apply gamma correction")
+		);
+		
+		opts::srgb = opts.add( ActionOption()
+				.long_opt("--srgb")
+				.type(OptType::Bool)
+				.value(false)
+				.help("Process this image in sRGB color space")
+		);
+		
+		opts::thumbnail = opts.add( ActionOption()
+				.long_opt("--thumbnail")
+				.type(OptType::Bool)
+				.value(false)
+				.help("Generate thumbnail for the image")
+		);
+		
 	};
 	return opts;
 }
@@ -119,6 +213,18 @@ void ActionConvert::cleanup() {
 
 bool ActionConvert::process_file(const OptionList& opts, const std::filesystem::path& srcFile, const std::filesystem::path& userOutputFile) {
 	auto formatStr = opts.get(opts::format).get<std::string>();
+	auto mips = opts.get(opts::mips).get<int>();
+	auto normal = opts.get(opts::normal).get<bool>();
+	auto clamps = opts.get(opts::clamps).get<bool>();
+	auto clampt = opts.get(opts::clampt).get<bool>();
+	auto clampu = opts.get(opts::clampu).get<bool>();
+	auto tri = opts.get(opts::trilinear).get<bool>();
+	auto point = opts.get(opts::pointsample).get<bool>();
+	auto startFrame = opts.get(opts::startframe).get<int>();
+	auto bumpScale = opts.get(opts::bumpscale).get<float>();
+	auto gammacorrect = opts.get(opts::gammacorrect).get<float>();
+	auto srgb = opts.get(opts::srgb).get<bool>();
+	auto thumbnail = opts.get(opts::thumbnail).get<bool>();
 	
 	// If an out file name is not provided, we need to build our own
 	std::filesystem::path outFile;
@@ -129,7 +235,33 @@ bool ActionConvert::process_file(const OptionList& opts, const std::filesystem::
 	auto format = ImageFromatFromUserString(formatStr.c_str());
 	
 	auto* vtfFile = new CVTFFile();
-	add_image_data(srcFile, vtfFile, format);
+
+	add_image_data(srcFile, vtfFile, format, true);
+	
+	util::cleanup vtfCleanup([vtfFile]{
+		delete vtfFile;
+	});
+	
+	vtfFile->SetFlag(TEXTUREFLAGS_NORMAL, normal);
+	vtfFile->SetFlag(TEXTUREFLAGS_CLAMPS, clamps);
+	vtfFile->SetFlag(TEXTUREFLAGS_CLAMPT, clampt);
+	vtfFile->SetFlag(TEXTUREFLAGS_CLAMPU, clampu);
+	vtfFile->SetFlag(TEXTUREFLAGS_TRILINEAR, tri);
+	vtfFile->SetFlag(TEXTUREFLAGS_POINTSAMPLE, point);
+	
+	vtfFile->SetStartFrame(startFrame);
+	vtfFile->ComputeReflectivity();
+	vtfFile->SetBumpmapScale(bumpScale);
+	
+	if (thumbnail && !vtfFile->GenerateThumbnail(srgb)) {
+		std::cerr << fmt::format("Could not generate thumbnail: {}\n", vlGetLastError());
+		return false;
+	}
+	
+	if (!vtfFile->GenerateMipmaps(MIPMAP_FILTER_CATROM, srgb)) {
+		std::cerr << "Could not generate mipmaps!\n";
+		return false;
+	}
 	
 	if (!vtfFile->Save(outFile.string().c_str())) {
 		std::cerr << fmt::format("Could not save file {}: {}\n", outFile.string(), vlGetLastError());
@@ -137,12 +269,11 @@ bool ActionConvert::process_file(const OptionList& opts, const std::filesystem::
 	}
 	fmt::print("{} -> {}\n", srcFile.string(), outFile.string());
 	
-	delete vtfFile;
 	return true;
 }
 
 // Add base image info. Lowest mip level.
-bool ActionConvert::add_image_data(const std::filesystem::path& imageSrc, VTFLib::CVTFFile* file, VTFImageFormat format) {
+bool ActionConvert::add_image_data(const std::filesystem::path& imageSrc, VTFLib::CVTFFile* file, VTFImageFormat format, bool create) {
 	
 	auto image = imglib::image_begin(imageSrc);
 	if (!image)
@@ -171,11 +302,16 @@ bool ActionConvert::add_image_data(const std::filesystem::path& imageSrc, VTFLib
 		format = dataFormat;
 	}
 	
-	file->Create(data.info.w, data.info.h, 1, 1, 1, format);
+	if (create) {
+		if (!file->Create(data.info.w, data.info.h, 1, 1, 1, format)) {
+			std::cerr << "Could not create VTF.\n";
+			free(dest);
+			return false;
+		}
+	}
 	file->SetData(1, 1, 1, 0, dest ? dest : (vlByte*)data.data);
 	
 	free(dest);
-	
 	return true;
 }
 

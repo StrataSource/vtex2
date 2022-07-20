@@ -23,7 +23,7 @@ namespace vtex2 {
 		void cleanup() override;
 		
 		bool process_file(const OptionList& opts, const std::filesystem::path& srcFile, const std::filesystem::path& outPath);
-		bool add_image_data(const std::filesystem::path& imageSrc, VTFLib::CVTFFile* file, VTFImageFormat format);
+		bool add_image_data(const std::filesystem::path& imageSrc, VTFLib::CVTFFile* file, VTFImageFormat format, bool create);
 	};
 	
 }
