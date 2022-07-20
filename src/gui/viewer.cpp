@@ -13,6 +13,10 @@
 #include <QMessageBox>
 #include <QCloseEvent>
 #include <QFileDialog>
+#include <QApplication>
+#include <QMenuBar>
+#include <QToolBar>
+#include <QStyle>
 
 #include <iostream>
 
@@ -77,6 +81,7 @@ void ViewerMainWindow::unload_file() {
 	delete file_;
 	file_ = nullptr;
 	path_ = "";
+	unmark_modified();
 }
 
 void ViewerMainWindow::setup_ui() {
@@ -123,6 +128,117 @@ void ViewerMainWindow::setup_ui() {
 	
 	// Tabify the docks 
 	tabifyDockWidget(infoDock, resDock);
+	
+	// Setup the menu bars
+	setup_menubar();
+}
+
+void ViewerMainWindow::setup_menubar() {
+	auto* toolBar = new QToolBar(this);
+	this->addToolBar(Qt::ToolBarArea::TopToolBarArea, toolBar);
+	
+	toolBar->addAction(style()->standardIcon(QStyle::SP_FileIcon), "New File", [this]() {
+		this->new_file();
+	});
+	toolBar->addAction(style()->standardIcon(QStyle::SP_DialogSaveButton), "Save File", [this]() {
+		this->save();
+	});
+	toolBar->addAction(style()->standardIcon(QStyle::SP_DialogOpenButton), "Open File", [this]() {
+		this->open_file();
+	});
+	toolBar->addAction(style()->standardIcon(QStyle::SP_BrowserReload), "Reload File", [this]() {
+		this->reload_file();
+	});
+	
+	toolBar->addSeparator();
+	
+	// File menu
+	auto* fileMenu = menuBar()->addMenu(tr("File"));
+	fileMenu->addAction(style()->standardIcon(QStyle::SP_FileIcon), "New", [this]() {
+		this->new_file();
+	});
+	fileMenu->addAction(style()->standardIcon(QStyle::SP_DialogOpenButton), "Open", [this]() {
+		this->open_file();
+	});
+	fileMenu->addSeparator();
+	fileMenu->addAction(style()->standardIcon(QStyle::SP_DialogSaveButton), "Save", [this]() {
+		this->save();
+	});
+	fileMenu->addAction(style()->standardIcon(QStyle::SP_DialogSaveButton), "Save As", [this]() {
+		this->save(true);
+	});
+	fileMenu->addAction(style()->standardIcon(QStyle::SP_BrowserReload), "Reload File", [this]() {
+		this->reload_file();
+	});
+	fileMenu->addSeparator();
+	fileMenu->addAction("Exit", [this]() {
+		this->close();
+	});
+	
+	
+	// Help menu
+	auto* helpMenu = menuBar()->addMenu(tr("Help"));
+	helpMenu->addAction("About", [this]() {
+		QMessageBox::about(this, tr("About"), 
+		"VTFView & vtex2 by Chaos Initiative\n\nBuilt using VTFLib by Neil 'Jed' Jedrzejewski & Ryan Gregg, modified by Joshua Ashton");
+	});
+	helpMenu->addAction("About Qt", [this]() {
+		qApp->aboutQt();
+	});
+}
+
+void ViewerMainWindow::open_file() {
+	if (!ask_save())
+		return;
+	unload_file();
+	
+	auto file = QFileDialog::getOpenFileName(this, tr("Open VTF"), QString(),
+		"Valve Texture Format (*.vtf);;All files (*.*)");
+		
+	if (file.isEmpty())
+		return;
+		
+	if (!load_file(file.toUtf8().data())) {
+		QMessageBox::warning(this, tr("Error"), tr("Could not open file!"));
+	}
+}
+
+void ViewerMainWindow::new_file() {
+	if (ask_save())
+		unload_file();
+}
+
+void ViewerMainWindow::reload_file() {
+	if (!ask_save())
+		return;
+		
+	auto oldPath = path_;
+	unload_file();
+	load_file(oldPath.c_str());
+}
+
+// Promps the user for save if dirty
+// Returns true if you should continue processing whatever request you were before calling this
+bool ViewerMainWindow::ask_save() {
+	if (!dirty_)
+		return true;
+	
+	auto msgBox = new QMessageBox(QMessageBox::Icon::Question, tr("Save changes?"), tr("You have unsaved changes. Would you like to save?"), 
+		QMessageBox::NoButton, this);
+	msgBox->addButton(QMessageBox::Save);
+	msgBox->addButton(QMessageBox::Cancel);
+	msgBox->addButton(QMessageBox::Discard);
+	
+	auto r = msgBox->exec();
+	
+	if (r == QMessageBox::Cancel) {
+		return false;
+	}
+	else if (r == QMessageBox::Save) {
+		save();
+	}
+	
+	return true;
 }
 
 void ViewerMainWindow::reset_state() {
@@ -138,13 +254,23 @@ void ViewerMainWindow::mark_modified() {
 	setWindowTitle(title + "*");
 }
 
-void ViewerMainWindow::save() {
+void ViewerMainWindow::unmark_modified() {
+	// Clear out the window asterick
+	auto title = windowTitle();
+	if (title.endsWith('*')) {
+		title.remove(title.length()-1, 1);
+		setWindowTitle(title);
+	}
+	dirty_ = false;
+}
+
+void ViewerMainWindow::save(bool saveAs) {
 	if (!dirty_)
 		return;
 	dirty_ = false;
 	
 	// Ask for a save directory if there's no active file
-	if (path_.empty()) {
+	if (path_.empty() || saveAs) {
 		auto name = QFileDialog::getSaveFileName(this, tr("Save as"), QString(), "Valve Texture File (*.vtf)");
 		if (name.isEmpty())
 			return;
@@ -158,10 +284,7 @@ void ViewerMainWindow::save() {
 		return;
 	}
 	
-	// Clear out the window asterick
-	auto title = windowTitle();
-	title.remove(title.length()-1, 1);
-	setWindowTitle(title);
+	unmark_modified();
 }
 
 void ViewerMainWindow::closeEvent(QCloseEvent* event) {
@@ -204,6 +327,13 @@ InfoWidget::InfoWidget(QWidget* pParent) :
 }
 
 void InfoWidget::update_info(VTFLib::CVTFFile* file) {
+	for (auto& pair : fields_) {
+		pair.second->clear();
+	}
+	
+	if (!file)
+		return;
+	
 	find("Width")->setText(QString::number(file->GetWidth()));
 	find("Height")->setText(QString::number(file->GetHeight()));
 	find("Depth")->setText(QString::number(file->GetDepth()));
@@ -297,6 +427,10 @@ void ImageViewWidget::set_vtf(VTFLib::CVTFFile* file) {
 	zoom_ = 1.f;
 	pos_ = {0,0};
 	
+	// No file, sad.
+	if (!file)
+		return;
+	
 	// Make the image fit if it doesn't
 	QSize sz(file->GetWidth(), file->GetHeight());
 	if (size().width() < sz.width() || size().height() < sz.height())
@@ -305,6 +439,9 @@ void ImageViewWidget::set_vtf(VTFLib::CVTFFile* file) {
 
 void ImageViewWidget::paintEvent(QPaintEvent* event) {
 	QPainter painter(this);
+	
+	if (!file_)
+		return;
 	
 	// Compute draw size for this mip, frame, etc
 	vlUInt imageWidth, imageHeight, imageDepth;
@@ -351,7 +488,9 @@ ResourceWidget::ResourceWidget(QWidget* parent) :
 
 void ResourceWidget::set_vtf(VTFLib::CVTFFile* file) {
 	table_->clear();
-	
+	if (!file)
+		return;
+
 	auto resources = file->GetResourceCount();
 	table_->setRowCount(resources);
 	for (vlUInt i = 0; i < resources; ++i) {
@@ -507,6 +646,23 @@ void ImageSettingsWidget::set_vtf(VTFLib::CVTFFile* file) {
 	// Hack to ensure we don't emit fileModified when setting defaults
 	settingFile_ = true;
 	
+	// Set some sensible defaults in the event no file is loaded
+	if (!file) {
+		startFrame_->setValue(0);
+		startFrame_->setRange(0, 0);
+		mip_->setValue(0);
+		mip_->setRange(0, 0);
+		face_->setValue(0);
+		face_->setRange(0, 0);
+		frame_->setValue(0);
+		frame_->setRange(0,0);
+		for (auto& check : flagChecks_) {
+			check.second->setChecked(false);
+			check.second->setCheckable(false);
+		}
+		return;
+	}
+	
 	file_ = file;
 	startFrame_->setValue(file->GetStartFrame());
 	mip_->setValue(0);
@@ -522,7 +678,9 @@ void ImageSettingsWidget::set_vtf(VTFLib::CVTFFile* file) {
 	// Set the flags
 	uint32_t flags = file->GetFlags();
 	for (auto& f : TEXTURE_FLAGS) {
-		flagChecks_.find(f.flag)->second->setChecked(!!(flags & f.flag));
+		auto check = flagChecks_.find(f.flag)->second;
+		check->setChecked(!!(flags & f.flag));
+		check->setCheckable(true);
 	}
 	
 	settingFile_ = false;

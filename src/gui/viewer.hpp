@@ -34,12 +34,18 @@ namespace vtfview {
 		inline const auto* file() const { return file_; }
 		
 		void mark_modified();
+		void unmark_modified();
 		
-		void save();
+		void save(bool saveAs = false);
+		void open_file();
+		void new_file();
+		void reload_file();
 		
 	protected:
 		void setup_ui();
+		void setup_menubar();
 		void reset_state();
+		bool ask_save();
 		
 		void closeEvent(QCloseEvent* event) override;
 		
@@ -51,7 +57,7 @@ namespace vtfview {
 		void vtfFileChanged(VTFLib::CVTFFile* file);
 		
 	private:
-		VTFLib::CVTFFile* file_;
+		VTFLib::CVTFFile* file_ = nullptr;
 		bool dirty_ = false;
 		std::string path_;
 	};
@@ -99,7 +105,7 @@ namespace vtfview {
 	private:
 		QImage image_;
 		void* imgBuf_ = nullptr;
-		VTFLib::CVTFFile* file_;
+		VTFLib::CVTFFile* file_ = nullptr;
 		
 		float zoom_ = 1.0f;
 		QPoint pos_;
