@@ -689,6 +689,7 @@ void ImageSettingsWidget::set_vtf(VTFLib::CVTFFile* file) {
 			check.second->setChecked(false);
 			check.second->setCheckable(false);
 		}
+		settingFile_ = false;
 		return;
 	}
 	
