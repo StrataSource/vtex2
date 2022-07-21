@@ -341,13 +341,12 @@ void ViewerMainWindow::closeEvent(QCloseEvent* event) {
 void ViewerMainWindow::import_file() {
 	auto filename = QFileDialog::getOpenFileName(this, tr("Open Image"), QString(),"All files (*.*)").toUtf8();
 
+	if (filename.isEmpty())
+		return;
+
 	auto image = imglib::image_begin(filename);
 
 	auto data = imglib::image_load(image);
-	util::cleanup dataCleanup([&](){
-		imglib::image_free(data);
-		imglib::image_end(image);
-	});
 
 	auto file = new CVTFFile();
 
@@ -355,6 +354,10 @@ void ViewerMainWindow::import_file() {
 	file->SetData(1, 1, 1, 0, (vlByte*)data.data);
 
 	load_file(file, filename);
+
+	// free image data
+	imglib::image_free(data);
+	imglib::image_end(image);
 }
 
 //////////////////////////////////////////////////////////////////////////////////
