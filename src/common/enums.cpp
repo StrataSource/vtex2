@@ -155,7 +155,7 @@ const char* GetResourceName(vlUInt resource) {
 	}
 }
 
-VTFImageFormat ImageFromatFromUserString(const char* arg) {
+VTFImageFormat ImageFormatFromUserString(const char* arg) {
 	if(str::strcasecmp("RGBA8888", arg) == 0) return IMAGE_FORMAT_RGBA8888;
 	else if(str::strcasecmp("ABGR8888", arg) == 0) return IMAGE_FORMAT_ABGR8888;
 	else if(str::strcasecmp("RGB888", arg) == 0) return IMAGE_FORMAT_RGB888;

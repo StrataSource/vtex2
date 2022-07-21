@@ -35,4 +35,4 @@ const char* GetResourceName(vlUInt resource);
  * that the user may specify
  * ie rgb888 instead of IMAGE_FORMAT_RGB888
  */
-VTFImageFormat ImageFromatFromUserString(const char* userStr);
+VTFImageFormat ImageFormatFromUserString(const char* userStr);
