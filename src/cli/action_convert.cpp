@@ -126,7 +126,7 @@ bool ActionConvert::process_file(const OptionList& opts, const std::filesystem::
 		outFile = srcFile.parent_path() / srcFile.filename().replace_extension(".vtf");
 	}
 	
-	auto format = ImageFromatFromUserString(formatStr.c_str());
+	auto format = ImageFormatFromUserString( formatStr.c_str() );
 	
 	auto* vtfFile = new CVTFFile();
 	add_image_data(srcFile, vtfFile, format);

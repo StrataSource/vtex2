@@ -29,6 +29,7 @@ namespace vtfview {
 		bool load_file(const char* path);
 		bool load_file(const void* data, size_t size);
 		bool load_file(VTFLib::CVTFFile* file);
+		bool load_file(VTFLib::CVTFFile* file, const char* path);
 		void unload_file();
 		
 		inline auto* file() { return file_; }
@@ -41,6 +42,7 @@ namespace vtfview {
 		void open_file();
 		void new_file();
 		void reload_file();
+		void import_file();
 		
 	protected:
 		void setup_ui();
