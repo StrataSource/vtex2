@@ -9,10 +9,13 @@
 
 #include "VTFLib.h"
 
+#include "document.hpp"
+
 #pragma once
 
 class QSpinBox;
 class QCheckBox;
+class QComboBox;
 
 namespace vtfview
 {
@@ -27,46 +30,37 @@ namespace vtfview
 	public:
 		ViewerMainWindow(QWidget* pParent = nullptr);
 
-		bool load_file(const char* path);
-		bool load_file(const void* data, size_t size);
-		bool load_file(VTFLib::CVTFFile* file);
-		void unload_file();
-
-		inline auto* file() {
-			return file_;
+		inline auto* document() {
+			return doc_;
 		}
-		inline const auto* file() const {
-			return file_;
+		inline const auto* document() const {
+			return doc_;
 		}
-
-		void mark_modified();
-		void unmark_modified();
 
 		void save(bool saveAs = false);
 		void open_file();
 		void new_file();
 		void reload_file();
 
+		bool load_file(const char* path) {
+			return document()->load_file(path);
+		}
+
 	protected:
 		void setup_ui();
 		void setup_menubar();
 		void reset_state();
-		bool ask_save();
 
 		void closeEvent(QCloseEvent* event) override;
 
-	signals:
-		/**
-		 * Invoked whenever the vtf changes
-		 * file may be nullptr if the file is fully unloaded
-		 */
-		void vtfFileChanged(VTFLib::CVTFFile* file);
+		void mark_modified();
+		void unmark_modified();
+
+		bool ask_save();
 
 	private:
-		VTFLib::CVTFFile* file_ = nullptr;
-		bool dirty_ = false;
-		std::string path_;
 		ImageViewWidget* viewer_ = nullptr;
+		Document* doc_ = nullptr;
 	};
 
 	/**
@@ -90,6 +84,7 @@ namespace vtfview
 		}
 
 		std::unordered_map<std::string, QLineEdit*> fields_;
+		QComboBox* formatCombo_ = nullptr;
 	};
 
 	/**

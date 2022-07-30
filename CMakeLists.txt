@@ -53,6 +53,7 @@ if (BUILD_GUI)
 	set(VIEWER_SRC
 			src/gui/main.cpp
 			src/gui/viewer.cpp
+			src/gui/document.cpp
 			res/resource.qrc)
 			
 	add_executable(vtfview ${VIEWER_SRC})

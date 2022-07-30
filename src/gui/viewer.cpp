@@ -17,6 +17,7 @@
 #include <QMenuBar>
 #include <QToolBar>
 #include <QStyle>
+#include <QComboBox>
 
 #include <iostream>
 #include <cfloat>
@@ -40,59 +41,19 @@ ViewerMainWindow::ViewerMainWindow(QWidget* pParent)
 	setup_ui();
 }
 
-bool ViewerMainWindow::load_file(const char* path) {
-	std::uint8_t* buffer;
-	auto numRead = util::read_file(path, buffer);
-	if (!numRead)
-		return false;
-
-	bool ok = load_file(buffer, numRead);
-	delete buffer;
-
-	setWindowTitle(fmt::format(FMT_STRING("VTFView - [{}]"), str::get_filename(path)).c_str());
-
-	path_ = path;
-	return ok;
-}
-
-bool ViewerMainWindow::load_file(const void* data, size_t size) {
-	file_ = new VTFLib::CVTFFile();
-	if (!file_->Load(data, size)) {
-		delete file_;
-		file_ = nullptr;
-		return false;
-	}
-	return load_file(file_);
-}
-
-bool ViewerMainWindow::load_file(VTFLib::CVTFFile* file) {
-	emit vtfFileChanged(file);
-	file_ = file;
-	path_ = "";
-	return true;
-}
-
-void ViewerMainWindow::unload_file() {
-	if (!file_)
-		return;
-	emit vtfFileChanged(nullptr);
-	delete file_;
-	file_ = nullptr;
-	path_ = "";
-	unmark_modified();
-}
-
 void ViewerMainWindow::setup_ui() {
 	setWindowTitle("VTFView");
 
 	setTabPosition(Qt::LeftDockWidgetArea, QTabWidget::North);
 	setTabPosition(Qt::RightDockWidgetArea, QTabWidget::North);
 
+	// Create the doc
+	doc_ = new Document(this);
+
 	// Info widget
 	auto* infoDock = new QDockWidget(tr("Info"), this);
 
 	auto* infoWidget = new InfoWidget(this);
-	connect(this, &ViewerMainWindow::vtfFileChanged, infoWidget, &InfoWidget::update_info);
 
 	infoDock->setWidget(infoWidget);
 	addDockWidget(Qt::RightDockWidgetArea, infoDock);
@@ -101,7 +62,6 @@ void ViewerMainWindow::setup_ui() {
 	auto* resDock = new QDockWidget(tr("Resources"), this);
 
 	auto* resList = new ResourceWidget(this);
-	connect(this, &ViewerMainWindow::vtfFileChanged, resList, &ResourceWidget::set_vtf);
 
 	resDock->setWidget(resList);
 	addDockWidget(Qt::RightDockWidgetArea, resDock);
@@ -112,8 +72,8 @@ void ViewerMainWindow::setup_ui() {
 	scroller->setAlignment(Qt::AlignCenter);
 
 	connect(
-		this, &ViewerMainWindow::vtfFileChanged,
-		[this](VTFLib::CVTFFile* file)
+		document(), &Document::vtfFileChanged,
+		[this](const std::string& path, VTFLib::CVTFFile* file)
 		{
 			viewer_->set_vtf(file);
 		});
@@ -127,8 +87,19 @@ void ViewerMainWindow::setup_ui() {
 	auto* viewerDock = new QDockWidget(tr("Viewer Settings"), this);
 
 	auto* viewSettings = new ImageSettingsWidget(viewer_, this);
-	connect(this, &ViewerMainWindow::vtfFileChanged, viewSettings, &ImageSettingsWidget::set_vtf);
 	connect(viewSettings, &ImageSettingsWidget::fileModified, this, &ViewerMainWindow::mark_modified);
+
+	// Hookup VTF change events
+	connect(
+		document(), &Document::vtfFileChanged,
+		[this, viewSettings, resList, infoWidget](const std::string& path, VTFLib::CVTFFile* file)
+		{
+			viewSettings->set_vtf(file);
+			resList->set_vtf(file);
+			infoWidget->update_info(file);
+
+			setWindowTitle(fmt::format(FMT_STRING("VTFView - [{}]"), str::get_filename(path.c_str())).c_str());
+		});
 
 	viewerDock->setWidget(viewSettings);
 	addDockWidget(Qt::LeftDockWidgetArea, viewerDock);
@@ -154,7 +125,7 @@ void ViewerMainWindow::setup_menubar() {
 		style()->standardIcon(QStyle::SP_DialogSaveButton), "Save File",
 		[this]()
 		{
-			this->save();
+			document()->save();
 		});
 	toolBar->addAction(
 		style()->standardIcon(QStyle::SP_DialogOpenButton), "Open File",
@@ -201,7 +172,7 @@ void ViewerMainWindow::setup_menubar() {
 		style()->standardIcon(QStyle::SP_DialogSaveButton), "Save",
 		[this]()
 		{
-			this->save();
+			document()->save();
 		});
 	fileMenu->addAction(
 		style()->standardIcon(QStyle::SP_DialogSaveButton), "Save As",
@@ -242,10 +213,50 @@ void ViewerMainWindow::setup_menubar() {
 		});
 }
 
+void ViewerMainWindow::reset_state() {
+	document()->unmark_modified();
+}
+
+void ViewerMainWindow::closeEvent(QCloseEvent* event) {
+	if (document()->dirty()) {
+		auto msgBox = new QMessageBox(
+			QMessageBox::Icon::Question, tr("Quit without saving?"),
+			tr("You have unsaved changes. Would you like to save?"), QMessageBox::NoButton, this);
+		msgBox->addButton(QMessageBox::Save);
+		msgBox->addButton(QMessageBox::Cancel);
+		msgBox->addButton(QMessageBox::Close);
+		auto r = msgBox->exec();
+
+		if (r == QMessageBox::Cancel) {
+			event->ignore(); // Just eat the event
+			return;
+		}
+		else if (r == QMessageBox::Save) {
+			document()->save();
+		}
+	}
+}
+
+void ViewerMainWindow::mark_modified() {
+	auto title = windowTitle();
+	if (title.endsWith("*"))
+		return;
+	setWindowTitle(title + "*");
+}
+
+void ViewerMainWindow::unmark_modified() {
+	// Clear out the window asterick
+	auto title = windowTitle();
+	if (title.endsWith('*')) {
+		title.remove(title.length() - 1, 1);
+		setWindowTitle(title);
+	}
+}
+
 void ViewerMainWindow::open_file() {
 	if (!ask_save())
 		return;
-	unload_file();
+	document()->unload_file();
 
 	auto file =
 		QFileDialog::getOpenFileName(this, tr("Open VTF"), QString(), "Valve Texture Format (*.vtf);;All files (*.*)");
@@ -253,29 +264,15 @@ void ViewerMainWindow::open_file() {
 	if (file.isEmpty())
 		return;
 
-	if (!load_file(file.toUtf8().data())) {
+	if (!document()->load_file(file.toUtf8().data())) {
 		QMessageBox::warning(this, tr("Error"), tr("Could not open file!"));
 	}
-}
-
-void ViewerMainWindow::new_file() {
-	if (ask_save())
-		unload_file();
-}
-
-void ViewerMainWindow::reload_file() {
-	if (!ask_save())
-		return;
-
-	auto oldPath = path_;
-	unload_file();
-	load_file(oldPath.c_str());
 }
 
 // Promps the user for save if dirty
 // Returns true if you should continue processing whatever request you were before calling this
 bool ViewerMainWindow::ask_save() {
-	if (!dirty_)
+	if (!document()->dirty())
 		return true;
 
 	auto msgBox = new QMessageBox(
@@ -291,49 +288,25 @@ bool ViewerMainWindow::ask_save() {
 		return false;
 	}
 	else if (r == QMessageBox::Save) {
-		save();
+		document()->save();
 	}
 
 	return true;
 }
 
-void ViewerMainWindow::reset_state() {
-	dirty_ = false;
-}
-
-void ViewerMainWindow::mark_modified() {
-	dirty_ = true;
-
-	auto title = windowTitle();
-	if (title.endsWith("*"))
-		return;
-	setWindowTitle(title + "*");
-}
-
-void ViewerMainWindow::unmark_modified() {
-	// Clear out the window asterick
-	auto title = windowTitle();
-	if (title.endsWith('*')) {
-		title.remove(title.length() - 1, 1);
-		setWindowTitle(title);
-	}
-	dirty_ = false;
-}
-
 void ViewerMainWindow::save(bool saveAs) {
-	if (!dirty_)
+	if (!document()->dirty())
 		return;
-	dirty_ = false;
 
 	// Ask for a save directory if there's no active file
-	if (path_.empty() || saveAs) {
+	if (document()->path().empty() || saveAs) {
 		auto name = QFileDialog::getSaveFileName(this, tr("Save as"), QString(), "Valve Texture File (*.vtf)");
 		if (name.isEmpty())
 			return;
-		path_ = name.toUtf8().data();
+		document()->set_path(name.toUtf8().data());
 	}
 
-	if (!file_->Save(path_.c_str())) {
+	if (!document()->save()) {
 		QMessageBox::warning(
 			this, "Could not save file!", fmt::format(FMT_STRING("Failed to save file: {}"), vlGetLastError()).c_str(),
 			QMessageBox::Ok);
@@ -343,24 +316,16 @@ void ViewerMainWindow::save(bool saveAs) {
 	unmark_modified();
 }
 
-void ViewerMainWindow::closeEvent(QCloseEvent* event) {
-	if (dirty_) {
-		auto msgBox = new QMessageBox(
-			QMessageBox::Icon::Question, tr("Quit without saving?"),
-			tr("You have unsaved changes. Would you like to save?"), QMessageBox::NoButton, this);
-		msgBox->addButton(QMessageBox::Save);
-		msgBox->addButton(QMessageBox::Cancel);
-		msgBox->addButton(QMessageBox::Close);
-		auto r = msgBox->exec();
+void ViewerMainWindow::new_file() {
+	if (!ask_save())
+		return;
+	document()->new_file();
+}
 
-		if (r == QMessageBox::Cancel) {
-			event->ignore(); // Just eat the event
-			return;
-		}
-		else if (r == QMessageBox::Save) {
-			save();
-		}
-	}
+void ViewerMainWindow::reload_file() {
+	if (!ask_save())
+		return;
+	document()->new_file();
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -368,9 +333,54 @@ void ViewerMainWindow::closeEvent(QCloseEvent* event) {
 //////////////////////////////////////////////////////////////////////////////////
 
 static inline constexpr const char* INFO_FIELDS[] = {
-	"Width", "Height", "Depth", "Frames", "Faces", "Mips", "Image format", "Reflectivity"};
+	"Width", "Height", "Depth", "Frames", "Faces", "Mips", "Reflectivity"};
 
 static inline constexpr const char* FILE_FIELDS[] = {"Size", "Version"};
+
+static inline constexpr struct {
+	VTFImageFormat format;
+	const char* name;
+} IMAGE_FORMATS[] = {
+	{IMAGE_FORMAT_RGBA8888, "RGBA8888"},
+	{IMAGE_FORMAT_ABGR8888, "ABGR8888"},
+	{IMAGE_FORMAT_RGB888, "RGB888"},
+	{IMAGE_FORMAT_BGR888, "BGR888"},
+	{IMAGE_FORMAT_RGB565, "RGB565"},
+	{IMAGE_FORMAT_I8, "I8"},
+	{IMAGE_FORMAT_IA88, "IA88"},
+	{IMAGE_FORMAT_P8, "P8"},
+	{IMAGE_FORMAT_A8, "A8"},
+	{IMAGE_FORMAT_RGB888_BLUESCREEN, "RGB888_BLUESCREEN"},
+	{IMAGE_FORMAT_BGR888_BLUESCREEN, "BGR888_BLUESCREEN"},
+	{IMAGE_FORMAT_ARGB8888, "ARGB8888"},
+	{IMAGE_FORMAT_BGRA8888, "BGRA8888"},
+	{IMAGE_FORMAT_DXT1, "DXT1"},
+	{IMAGE_FORMAT_DXT3, "DXT3"},
+	{IMAGE_FORMAT_DXT5, "DXT5"},
+	{IMAGE_FORMAT_BGRX8888, "BGRX8888"},
+	{IMAGE_FORMAT_BGR565, "BGR565"},
+	{IMAGE_FORMAT_BGRX5551, "BGRX5551"},
+	{IMAGE_FORMAT_BGRA4444, "BGRA4444"},
+	{IMAGE_FORMAT_DXT1_ONEBITALPHA, "DXT1_ONEBITALPHA"},
+	{IMAGE_FORMAT_BGRA5551, "BGRA5551"},
+	{IMAGE_FORMAT_UV88, "UV88"},
+	{IMAGE_FORMAT_UVWQ8888, "UVWQ8888"},
+	{IMAGE_FORMAT_RGBA16161616F, "RGBA16161616F"},
+	{IMAGE_FORMAT_RGBA16161616, "RGBA16161616"},
+	{IMAGE_FORMAT_UVLX8888, "UVLX8888"},
+	{IMAGE_FORMAT_R32F, "R32F"},
+	{IMAGE_FORMAT_RGB323232F, "RGB323232F"},
+	{IMAGE_FORMAT_RGBA32323232F, "RGBA32323232F"},
+	{IMAGE_FORMAT_NV_DST16, "NV_DST16"},
+	{IMAGE_FORMAT_NV_DST24, "NV_DST24"},
+	{IMAGE_FORMAT_NV_INTZ, "NV_INTZ"},
+	{IMAGE_FORMAT_NV_RAWZ, "NV_RAWZ"},
+	{IMAGE_FORMAT_ATI_DST16, "ATI_DST16"},
+	{IMAGE_FORMAT_ATI_DST24, "ATI_DST24"},
+	{IMAGE_FORMAT_NV_NULL, "NV_NULL"},
+	{IMAGE_FORMAT_ATI2N, "ATI2N"},
+	{IMAGE_FORMAT_ATI1N, "ATI1N"},
+};
 
 InfoWidget::InfoWidget(QWidget* pParent)
 	: QWidget(pParent) {
@@ -391,7 +401,6 @@ void InfoWidget::update_info(VTFLib::CVTFFile* file) {
 	find("Frames")->setText(QString::number(file->GetFrameCount()));
 	find("Faces")->setText(QString::number(file->GetFaceCount()));
 	find("Mips")->setText(QString::number(file->GetMipmapCount()));
-	find("Image format")->setText(ImageFormatToString(file->GetFormat()));
 
 	find("Version")->setText(QString::number(file->GetMajorVersion()) + "." + QString::number(file->GetMinorVersion()));
 	auto size = file->GetSize();
@@ -401,6 +410,14 @@ void InfoWidget::update_info(VTFLib::CVTFFile* file) {
 	vlSingle x, y, z;
 	file->GetReflectivity(x, y, z);
 	find("Reflectivity")->setText(fmt::format(FMT_STRING("{:.3f} {:.3f} {:.3f}"), x, y, z).c_str());
+
+	// Select the correct image format
+	for (int i = 0; i < util::ArraySize(IMAGE_FORMATS); ++i) {
+		if (IMAGE_FORMATS[i].format == file->GetFormat()) {
+			formatCombo_->setCurrentIndex(i);
+			break;
+		}
+	}
 }
 
 void InfoWidget::setup_ui() {
@@ -431,8 +448,18 @@ void InfoWidget::setup_ui() {
 		fields_.insert({f, edit});
 	}
 
-	// Image contents info
+	// Image contents info group box below here
 	row = 0;
+
+	// Image format dropdown box
+	formatCombo_ = new QComboBox(this);
+	for (auto& fmt : IMAGE_FORMATS) {
+		formatCombo_->addItem(fmt.name, (int)fmt.format);
+	}
+	imageGroupLayout->addWidget(new QLabel("Image format:", this), row, 0);
+	imageGroupLayout->addWidget(formatCombo_, row, 1);
+	++row;
+
 	for (auto& f : INFO_FIELDS) {
 		auto* label = new QLabel(QString(f) + ":", imageGroupBox);
 		auto* edit = new QLineEdit(this);
