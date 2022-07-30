@@ -16,7 +16,7 @@ const char* ImageFormatToString(VTFImageFormat format);
 /**
  * Convert to image format enum from string
  * Returns IMAGE_FORMAT_NONE if arg could not be converted
- * comparisons are not case sensitive. ie rgba8888 matches with RGBA8888 
+ * comparisons are not case sensitive. ie rgba8888 matches with RGBA8888
  */
 VTFImageFormat ImageFormatFromString(const char* arg);
 
@@ -31,7 +31,7 @@ std::vector<std::string> TextureFlagsToStringVector(std::uint32_t flags);
 const char* GetResourceName(vlUInt resource);
 
 /**
- * Similar to ImageFormatFromString but uses shorter strings 
+ * Similar to ImageFormatFromString but uses shorter strings
  * that the user may specify
  * ie rgb888 instead of IMAGE_FORMAT_RGB888
  */

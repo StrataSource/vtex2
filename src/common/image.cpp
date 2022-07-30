@@ -22,7 +22,7 @@ ImageInfo_t imglib::image_info(FILE* fp) {
 	ImageInfo_t info;
 	stbi_info_from_file(fp, &info.w, &info.h, &info.comps);
 	info.frames = 1; // @TODO: animated image support
-	
+
 	// Determine channel type
 	if (stbi_is_16_bit_from_file(fp))
 		info.type = ChannelType::UInt16;
@@ -30,13 +30,13 @@ ImageInfo_t imglib::image_info(FILE* fp) {
 		info.type = ChannelType::Float;
 	else
 		info.type == ChannelType::UInt8;
-	
+
 	return info;
 }
-	
+
 ImageData_t imglib::image_load(FILE* fp) {
 	auto info = image_info(fp);
-	ImageData_t data {};
+	ImageData_t data{};
 	data.info.frames = 1;
 	if (info.type == ChannelType::Float) {
 		data.data = stbi_loadf_from_file(fp, &data.info.w, &data.info.h, &data.info.comps, info.comps);
@@ -62,18 +62,17 @@ void imglib::image_end(FILE* fp) {
 bool imglib::image_save(const ImageData_t& data, FILE* fp, FileFormat format) {
 	if (!fp || !data.data || (format != Tga && format != Png && format != Jpeg && format != Bmp && format != Hdr))
 		return false;
-	
+
 	if (format == Hdr) {
-		
 	}
-	
+
 	return true;
 }
 
 bool imglib::image_save(const ImageData_t& data, const char* file, FileFormat format) {
 	if (!file || !data.data || (format != Tga && format != Png && format != Jpeg && format != Bmp && format != Hdr))
 		return false;
-	
+
 	bool bOk = false;
 	if (format == Hdr) {
 		// Convert if necessary. Needs to be float for HDR
@@ -82,14 +81,15 @@ bool imglib::image_save(const ImageData_t& data, const char* file, FileFormat fo
 		if (data.info.type != Float) {
 			dataToUse = malloc(data.info.w * data.info.h * sizeof(float) * data.info.comps);
 			dataIsOurs = true;
-			if (!convert_formats(data.data, dataToUse, data.info.type, Float, data.info.comps, data.info.w, data.info.h)) {
+			if (!convert_formats(
+					data.data, dataToUse, data.info.type, Float, data.info.comps, data.info.w, data.info.h)) {
 				free(dataToUse);
 				return false;
 			}
 		}
-		
+
 		bOk |= !!stbi_write_hdr(file, data.info.w, data.info.h, data.info.comps, (const float*)dataToUse);
-		
+
 		if (dataIsOurs)
 			free(dataToUse);
 	}
@@ -100,12 +100,13 @@ bool imglib::image_save(const ImageData_t& data, const char* file, FileFormat fo
 		if (data.info.type != UInt8) {
 			dataToUse = malloc(data.info.w * data.info.h * sizeof(uint8_t) * data.info.comps);
 			dataIsOurs = true;
-			if (!convert_formats(data.data, dataToUse, data.info.type, UInt8, data.info.comps, data.info.w, data.info.h)) {
+			if (!convert_formats(
+					data.data, dataToUse, data.info.type, UInt8, data.info.comps, data.info.w, data.info.h)) {
 				free(dataToUse);
 				return false;
 			}
 		}
-		
+
 		// Write the stuff out
 		if (format == Png) {
 			bOk = !!stbi_write_png(file, data.info.w, data.info.h, data.info.comps, dataToUse, 0);
@@ -119,15 +120,16 @@ bool imglib::image_save(const ImageData_t& data, const char* file, FileFormat fo
 		else if (format == Bmp) {
 			bOk = !!stbi_write_bmp(file, data.info.w, data.info.h, data.info.comps, dataToUse);
 		}
-		
-		if(dataIsOurs)
+
+		if (dataIsOurs)
 			free(dataToUse);
 	}
-	
+
 	return bOk;
 }
 
-bool imglib::convert_formats(const void* srcData, void* dstData, ChannelType srcChanType, ChannelType dstChanType, int comps, int w, int h) {
+bool imglib::convert_formats(
+	const void* srcData, void* dstData, ChannelType srcChanType, ChannelType dstChanType, int comps, int w, int h) {
 	// No conv needed
 	if (srcChanType == dstChanType)
 		return true;
@@ -168,7 +170,7 @@ bool imglib::convert_formats(const void* srcData, void* dstData, ChannelType src
 				convert_rgb32_rgb16(srcData, dstData, w, h);
 				return true;
 			}
-			else if (comps ==4) {
+			else if (comps == 4) {
 				convert_rgba32_rgba16(srcData, dstData, w, h);
 				return true;
 			}
@@ -216,91 +218,91 @@ bool imglib::convert_formats(const void* srcData, void* dstData, ChannelType src
 				return false;
 		}
 	}
-	
+
 	return false;
 }
 
 void imglib::convert_rgb16_rgb8(const void* rgb16, void* rgb8, int w, int h) {
 	const uint16_t* src = static_cast<const uint16_t*>(rgb16);
 	uint8_t* dst = static_cast<uint8_t*>(rgb8);
-	for (int i = 0; i < w*h*3; ++i)
-		dst[i] = src[i] * (255.f/65535.f);
+	for (int i = 0; i < w * h * 3; ++i)
+		dst[i] = src[i] * (255.f / 65535.f);
 }
 
 void imglib::convert_rgba16_rgba8(const void* rgba16, void* rgba8, int w, int h) {
 	const uint16_t* src = static_cast<const uint16_t*>(rgba16);
 	uint8_t* dst = static_cast<uint8_t*>(rgba8);
-	for (int i = 0; i < w*h*4; ++i)
-		dst[i] = src[i] * (255.f/65535.f);
+	for (int i = 0; i < w * h * 4; ++i)
+		dst[i] = src[i] * (255.f / 65535.f);
 }
 
 void imglib::convert_rgb32_rgb8(const void* rgb32, void* rgb8, int w, int h) {
 	const float* src = static_cast<const float*>(rgb32);
 	uint8_t* dst = static_cast<uint8_t*>(rgb8);
-	for (int i = 0; i < w*h*3; ++i)
+	for (int i = 0; i < w * h * 3; ++i)
 		dst[i] = src[i] * (255.f);
 }
 
 void imglib::convert_rgba32_rgba8(const void* rgba32, void* rgba8, int w, int h) {
 	const float* src = static_cast<const float*>(rgba32);
 	uint8_t* dst = static_cast<uint8_t*>(rgba8);
-	for (int i = 0; i < w*h*4; ++i)
+	for (int i = 0; i < w * h * 4; ++i)
 		dst[i] = src[i] * (255.f);
 }
 
 void imglib::convert_rgb8_rgb32(const void* rgb8, void* rgb32, int w, int h) {
 	const uint8_t* src = static_cast<const uint8_t*>(rgb8);
 	float* dst = static_cast<float*>(rgb32);
-	for (int i = 0; i < w*h*3; ++i)
+	for (int i = 0; i < w * h * 3; ++i)
 		dst[i] = src[i] / (255.f);
 }
 
 void imglib::convert_rgba8_rgba32(const void* rgba8, void* rgba32, int w, int h) {
 	const uint8_t* src = static_cast<const uint8_t*>(rgba8);
 	float* dst = static_cast<float*>(rgba32);
-	for (int i = 0; i < w*h*4; ++i)
+	for (int i = 0; i < w * h * 4; ++i)
 		dst[i] = src[i] / (255.f);
 }
 
 void imglib::convert_rgb16_rgb32(const void* rgb16, void* rgb32, int w, int h) {
 	const uint16_t* src = static_cast<const uint16_t*>(rgb16);
 	float* dst = static_cast<float*>(rgb32);
-	for (int i = 0; i < w*h*3; ++i)
+	for (int i = 0; i < w * h * 3; ++i)
 		dst[i] = src[i] / (65535.f);
 }
 
 void imglib::convert_rgba16_rgba32(const void* rgba16, void* rgba32, int w, int h) {
 	const uint16_t* src = static_cast<const uint16_t*>(rgba16);
 	float* dst = static_cast<float*>(rgba32);
-	for (int i = 0; i < w*h*4; ++i)
+	for (int i = 0; i < w * h * 4; ++i)
 		dst[i] = src[i] / (65535.f);
 }
 
 void imglib::convert_rgb32_rgb16(const void* rgb32, void* rgb16, int w, int h) {
 	const float* src = static_cast<const float*>(rgb32);
 	uint16_t* dst = static_cast<uint16_t*>(rgb16);
-	for (int i = 0; i < w*h*3; ++i)
+	for (int i = 0; i < w * h * 3; ++i)
 		dst[i] = src[i] * 65535.f;
 }
 
 void imglib::convert_rgba32_rgba16(const void* rgba32, void* rgba16, int w, int h) {
 	const float* src = static_cast<const float*>(rgba32);
 	uint16_t* dst = static_cast<uint16_t*>(rgba16);
-	for (int i = 0; i < w*h*4; ++i)
+	for (int i = 0; i < w * h * 4; ++i)
 		dst[i] = src[i] * 65535.f;
 }
 
 void imglib::convert_rgb8_rgb16(const void* rgb8, void* rgb16, int w, int h) {
 	auto* src = static_cast<const uint8_t*>(rgb8);
 	auto* dst = static_cast<uint16_t*>(rgb16);
-	for (int i = 0; i < w*h*3; ++i)
-		dst[i] = src[i] * (65535.f/255.f);
+	for (int i = 0; i < w * h * 3; ++i)
+		dst[i] = src[i] * (65535.f / 255.f);
 }
 void imglib::convert_rgba8_rgba16(const void* rgba8, void* rgba16, int w, int h) {
 	auto* src = static_cast<const uint8_t*>(rgba8);
 	auto* dst = static_cast<uint16_t*>(rgba16);
-	for (int i = 0; i < w*h*4; ++i)
-		dst[i] = src[i] * (65535.f/255.f);
+	for (int i = 0; i < w * h * 4; ++i)
+		dst[i] = src[i] * (65535.f / 255.f);
 }
 
 FileFormat imglib::image_get_format_from_file(const char* str) {
@@ -327,14 +329,22 @@ FileFormat imglib::image_get_format(const char* ext) {
 }
 
 const char* imglib::image_get_extension(FileFormat format) {
-	switch(format) {
-		case Tga: return ".tga";
-		case Png: return ".png";
-		case Jpeg: return ".jpg";
-		case Bmp: return ".bmp";
-		case Gif: return ".gif";
-		case Psd: return ".psd";
-		case Hdr: return ".hdr";
-		default: return "";
+	switch (format) {
+		case Tga:
+			return ".tga";
+		case Png:
+			return ".png";
+		case Jpeg:
+			return ".jpg";
+		case Bmp:
+			return ".bmp";
+		case Gif:
+			return ".gif";
+		case Psd:
+			return ".psd";
+		case Hdr:
+			return ".hdr";
+		default:
+			return "";
 	}
 }
