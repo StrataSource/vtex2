@@ -48,6 +48,8 @@ namespace vtfview
 			return dirty_;
 		}
 
+		void set_format(VTFImageFormat format);
+
 	signals:
 		/**
 		 * Invoked whenever the vtf changes
@@ -69,6 +71,7 @@ namespace vtfview
 		VTFLib::CVTFFile* file_ = nullptr;
 		bool dirty_ = false;
 		std::string path_;
+		VTFImageFormat format_ = IMAGE_FORMAT_NONE;
 	};
 
 } // namespace vtfview
