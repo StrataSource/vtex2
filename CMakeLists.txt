@@ -54,7 +54,7 @@ if (BUILD_GUI)
 	set(VIEWER_SRC
 			src/gui/main.cpp
 			src/gui/viewer.cpp
-			res/resource.qrc)
+			res/resource.qrc src/gui/imageImportDialog.cpp src/gui/imageImportDialog.hpp)
 			
 	add_executable(vtfview ${VIEWER_SRC})
 endif()
