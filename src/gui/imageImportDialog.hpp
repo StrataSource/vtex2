@@ -13,7 +13,6 @@ namespace vtfview
 		explicit ImageImportDialog( QWidget *pParent = nullptr );
 
 	private:
-		QTabWidget *tabWidget;
 		QDialogButtonBox *buttonBox;
 	};
 } // namespace vtfview
