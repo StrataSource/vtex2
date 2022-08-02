@@ -70,7 +70,7 @@ namespace vtfview
 		Q_OBJECT;
 
 	public:
-		InfoWidget(QWidget* pParent = nullptr);
+		InfoWidget(Document* doc, QWidget* pParent = nullptr);
 
 		/**
 		 * Update the widget with info from the specified VTF file
@@ -85,6 +85,7 @@ namespace vtfview
 
 		std::unordered_map<std::string, QLineEdit*> fields_;
 		QComboBox* formatCombo_ = nullptr;
+		Document* doc_ = nullptr;
 	};
 
 	/**
@@ -94,7 +95,7 @@ namespace vtfview
 		Q_OBJECT;
 
 	public:
-		ImageViewWidget(QWidget* pParent = nullptr);
+		ImageViewWidget(Document* doc, QWidget* pParent = nullptr);
 
 		void set_pixmap(const QImage& pixmap);
 		void set_vtf(VTFLib::CVTFFile* file);
@@ -149,7 +150,7 @@ namespace vtfview
 		Q_OBJECT;
 
 	public:
-		ResourceWidget(QWidget* parent = nullptr);
+		ResourceWidget(Document* doc, QWidget* parent = nullptr);
 
 		void set_vtf(VTFLib::CVTFFile* file);
 
@@ -167,7 +168,7 @@ namespace vtfview
 		Q_OBJECT;
 
 	public:
-		ImageSettingsWidget(ImageViewWidget* viewer, QWidget* parent = nullptr);
+		ImageSettingsWidget(Document* doc, ImageViewWidget* viewer, QWidget* parent = nullptr);
 
 		void set_vtf(VTFLib::CVTFFile* file);
 

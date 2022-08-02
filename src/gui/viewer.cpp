@@ -49,11 +49,20 @@ void ViewerMainWindow::setup_ui() {
 
 	// Create the doc
 	doc_ = new Document(this);
+	connect(
+		doc_, &Document::vtfFileModified,
+		[this](bool modified)
+		{
+			if (modified)
+				this->mark_modified();
+			else
+				this->unmark_modified();
+		});
 
 	// Info widget
 	auto* infoDock = new QDockWidget(tr("Info"), this);
 
-	auto* infoWidget = new InfoWidget(this);
+	auto* infoWidget = new InfoWidget(doc_, this);
 
 	infoDock->setWidget(infoWidget);
 	addDockWidget(Qt::RightDockWidgetArea, infoDock);
@@ -61,14 +70,14 @@ void ViewerMainWindow::setup_ui() {
 	// Resource list
 	auto* resDock = new QDockWidget(tr("Resources"), this);
 
-	auto* resList = new ResourceWidget(this);
+	auto* resList = new ResourceWidget(doc_, this);
 
 	resDock->setWidget(resList);
 	addDockWidget(Qt::RightDockWidgetArea, resDock);
 
 	// Main image viewer
 	auto* scroller = new QScrollArea(this);
-	viewer_ = new ImageViewWidget(this);
+	viewer_ = new ImageViewWidget(doc_, this);
 	scroller->setAlignment(Qt::AlignCenter);
 
 	connect(
@@ -86,7 +95,7 @@ void ViewerMainWindow::setup_ui() {
 	// Viewer settings
 	auto* viewerDock = new QDockWidget(tr("Viewer Settings"), this);
 
-	auto* viewSettings = new ImageSettingsWidget(viewer_, this);
+	auto* viewSettings = new ImageSettingsWidget(doc_, viewer_, this);
 	connect(viewSettings, &ImageSettingsWidget::fileModified, this, &ViewerMainWindow::mark_modified);
 
 	// Hookup VTF change events
@@ -106,6 +115,7 @@ void ViewerMainWindow::setup_ui() {
 
 	// Tabify the docks
 	tabifyDockWidget(infoDock, resDock);
+	infoDock->activateWindow();
 
 	// Setup the menu bars
 	setup_menubar();
@@ -382,8 +392,9 @@ static inline constexpr struct {
 	{IMAGE_FORMAT_ATI1N, "ATI1N"},
 };
 
-InfoWidget::InfoWidget(QWidget* pParent)
-	: QWidget(pParent) {
+InfoWidget::InfoWidget(Document* doc, QWidget* pParent)
+	: QWidget(pParent),
+	  doc_(doc) {
 	setup_ui();
 }
 
@@ -458,6 +469,12 @@ void InfoWidget::setup_ui() {
 	}
 	imageGroupLayout->addWidget(new QLabel("Image format:", this), row, 0);
 	imageGroupLayout->addWidget(formatCombo_, row, 1);
+	connect(
+		formatCombo_, qOverload<int>(&QComboBox::currentIndexChanged),
+		[this](int index)
+		{
+			doc_->set_format(IMAGE_FORMATS[index].format);
+		});
 	++row;
 
 	for (auto& f : INFO_FIELDS) {
@@ -483,7 +500,7 @@ void InfoWidget::setup_ui() {
 // ImageViewWidget
 //////////////////////////////////////////////////////////////////////////////////
 
-ImageViewWidget::ImageViewWidget(QWidget* pParent)
+ImageViewWidget::ImageViewWidget(Document*, QWidget* pParent)
 	: QWidget(pParent) {
 	setMinimumSize(256, 256);
 }
@@ -578,7 +595,7 @@ void ImageViewWidget::update_size() {
 // ResourceWidget
 //////////////////////////////////////////////////////////////////////////////////
 
-ResourceWidget::ResourceWidget(QWidget* parent)
+ResourceWidget::ResourceWidget(Document*, QWidget* parent)
 	: QWidget(parent) {
 	setup_ui();
 }
@@ -667,7 +684,7 @@ constexpr struct TextureFlag {
 //////////////////////////////////////////////////////////////////////////////////
 // ImageSettingsWidget
 //////////////////////////////////////////////////////////////////////////////////
-ImageSettingsWidget::ImageSettingsWidget(ImageViewWidget* viewer, QWidget* parent)
+ImageSettingsWidget::ImageSettingsWidget(Document*, ImageViewWidget* viewer, QWidget* parent)
 	: QWidget(parent) {
 	setup_ui(viewer);
 }
