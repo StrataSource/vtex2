@@ -6,6 +6,8 @@
 
 #include <unordered_map>
 #include <string>
+#include <cassert>
+#include <vector>
 
 #include "VTFLib.h"
 
@@ -16,6 +18,7 @@
 class QSpinBox;
 class QCheckBox;
 class QComboBox;
+class QShortcut;
 
 namespace vtfview
 {
@@ -46,6 +49,22 @@ namespace vtfview
 			return document()->load_file(path);
 		}
 
+		enum Actions {
+			Save,
+			SaveAs,
+			Load,
+			Reload,
+			ZoomIn,
+			ZoomOut,
+
+			Action_Count,
+		};
+
+		QShortcut* get_shortcut(Actions act) {
+			assert(act < Action_Count && act >= 0);
+			return shortcuts_[act];
+		}
+
 	protected:
 		void setup_ui();
 		void setup_menubar();
@@ -61,6 +80,8 @@ namespace vtfview
 	private:
 		ImageViewWidget* viewer_ = nullptr;
 		Document* doc_ = nullptr;
+
+		std::vector<QShortcut*> shortcuts_;
 	};
 
 	/**

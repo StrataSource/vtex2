@@ -18,6 +18,8 @@
 #include <QToolBar>
 #include <QStyle>
 #include <QComboBox>
+#include <QKeySequence>
+#include <QShortcut>
 
 #include <iostream>
 #include <cfloat>
@@ -119,6 +121,56 @@ void ViewerMainWindow::setup_ui() {
 
 	// Setup the menu bars
 	setup_menubar();
+
+	// Register global actions
+	shortcuts_.reserve(Action_Count);
+	auto* saveShortcut = new QShortcut(
+		QKeySequence::Save, this,
+		[this]
+		{
+			this->save();
+		});
+	shortcuts_[Actions::Save] = saveShortcut;
+
+	saveShortcut = new QShortcut(
+		QKeySequence::SaveAs, this,
+		[this]
+		{
+			this->save(true);
+		});
+	shortcuts_[Actions::SaveAs] = saveShortcut;
+
+	saveShortcut = new QShortcut(
+		QKeySequence("Ctrl+Shift+R"), this,
+		[this]
+		{
+			this->reload_file();
+		});
+	shortcuts_[Actions::Reload] = saveShortcut;
+
+	saveShortcut = new QShortcut(
+		QKeySequence::Open, this,
+		[this]
+		{
+			this->open_file();
+		});
+	shortcuts_[Actions::Save] = saveShortcut;
+
+	saveShortcut = new QShortcut(
+		QKeySequence(Qt::CTRL + Qt::Key_Equal), this,
+		[this]
+		{
+			this->viewer_->zoom(0.1);
+		});
+	shortcuts_[Actions::ZoomIn] = saveShortcut;
+
+	saveShortcut = new QShortcut(
+		QKeySequence(Qt::CTRL + Qt::Key_Minus), this,
+		[this]
+		{
+			this->viewer_->zoom(-0.1);
+		});
+	shortcuts_[Actions::ZoomOut] = saveShortcut;
 }
 
 void ViewerMainWindow::setup_menubar() {
@@ -266,7 +318,6 @@ void ViewerMainWindow::unmark_modified() {
 void ViewerMainWindow::open_file() {
 	if (!ask_save())
 		return;
-	document()->unload_file();
 
 	auto file =
 		QFileDialog::getOpenFileName(this, tr("Open VTF"), QString(), "Valve Texture Format (*.vtf);;All files (*.*)");
@@ -335,7 +386,8 @@ void ViewerMainWindow::new_file() {
 void ViewerMainWindow::reload_file() {
 	if (!ask_save())
 		return;
-	document()->new_file();
+
+	document()->load_file(document()->path().c_str());
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -381,13 +433,6 @@ static inline constexpr struct {
 	{IMAGE_FORMAT_R32F, "R32F"},
 	{IMAGE_FORMAT_RGB323232F, "RGB323232F"},
 	{IMAGE_FORMAT_RGBA32323232F, "RGBA32323232F"},
-	{IMAGE_FORMAT_NV_DST16, "NV_DST16"},
-	{IMAGE_FORMAT_NV_DST24, "NV_DST24"},
-	{IMAGE_FORMAT_NV_INTZ, "NV_INTZ"},
-	{IMAGE_FORMAT_NV_RAWZ, "NV_RAWZ"},
-	{IMAGE_FORMAT_ATI_DST16, "ATI_DST16"},
-	{IMAGE_FORMAT_ATI_DST24, "ATI_DST24"},
-	{IMAGE_FORMAT_NV_NULL, "NV_NULL"},
 	{IMAGE_FORMAT_ATI2N, "ATI2N"},
 	{IMAGE_FORMAT_ATI1N, "ATI1N"},
 };
