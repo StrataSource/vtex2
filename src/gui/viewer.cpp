@@ -255,7 +255,6 @@ void ViewerMainWindow::setup_menubar() {
 			this->close();
 		});
 
-
 	// Help menu
 	auto* helpMenu = menuBar()->addMenu(tr("Help"));
 	helpMenu->addAction(
