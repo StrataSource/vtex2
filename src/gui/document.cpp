@@ -62,7 +62,7 @@ bool Document::load_file(const char* path) {
 		return false;
 
 	bool ok = load_file_internal(buffer, numRead);
-	delete buffer;
+	delete[] buffer;
 
 	path_ = path;
 	emit vtfFileChanged(path_, file_);
@@ -95,12 +95,14 @@ void Document::unload_file() {
 }
 
 bool Document::load_file_internal(const void* data, size_t size) {
+	auto* oldFile = file_;
 	file_ = new VTFLib::CVTFFile();
 	if (!file_->Load(data, size)) {
 		delete file_;
-		file_ = nullptr;
+		file_ = oldFile;
 		return false;
 	}
+	delete oldFile;
 	return true;
 }
 
