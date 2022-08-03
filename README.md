@@ -12,6 +12,7 @@ Required packages:
 * make or ninja
 
 ```sh
+git submodule update --init --recursive
 mkdir build && cd build
 cmake ..
 make -j$(nproc)

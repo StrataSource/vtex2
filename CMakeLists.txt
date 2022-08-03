@@ -16,7 +16,6 @@ set(CMAKE_BUILD_RPATH_USE_ORIGIN ON)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 # Build vtflib as static lib
-set(VTFLIB_STATIC ON)
 add_subdirectory(external/vtflib)
 add_subdirectory(external/fmtlib)
 
@@ -54,6 +53,7 @@ if (BUILD_GUI)
 	set(VIEWER_SRC
 			src/gui/main.cpp
 			src/gui/viewer.cpp
+			src/gui/document.cpp
 			res/resource.qrc src/gui/imageImportDialog.cpp src/gui/imageImportDialog.hpp)
 			
 	add_executable(vtfview ${VIEWER_SRC})
@@ -64,12 +64,12 @@ if(WIN32)
 	set_target_properties(vtfview PROPERTIES VS_DEBUGGER_ENVIRONMENT "PATH=%PATH%;${QT_BASEDIR}/bin;")
 endif()
 
-target_link_libraries(vtex2 PRIVATE vtflib libcom fmt::fmt)
+target_link_libraries(vtex2 PRIVATE vtflib_static libcom fmt::fmt)
 target_include_directories(vtex2 PRIVATE src external)
 target_include_directories(libcom PRIVATE src external external/vtflib/lib)
 
 if (BUILD_GUI)
-	target_link_libraries(vtfview PRIVATE vtflib libcom fmt::fmt)
+	target_link_libraries(vtfview PRIVATE vtflib_static libcom fmt::fmt)
 	target_include_directories(vtfview PRIVATE src external)
 
 	find_package(Qt5 REQUIRED COMPONENTS Widgets Core Gui Svg)

@@ -1,5 +1,6 @@
 
-namespace vtex2 {
+namespace vtex2
+{
 
 	struct vec2 {
 		float x, y;
@@ -13,4 +14,4 @@ namespace vtex2 {
 		float x, y, z, w;
 	};
 
-}
+} // namespace vtex2

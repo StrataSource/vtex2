@@ -4,7 +4,7 @@
 
 int main(int argc, char** argv) {
 	QApplication app(argc, argv);
-	
+
 	std::string file;
 	if (argc > 1) {
 		file = argv[1];
