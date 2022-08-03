@@ -58,6 +58,9 @@ void ViewerMainWindow::setup_ui() {
 	setTabPosition(Qt::LeftDockWidgetArea, QTabWidget::North);
 	setTabPosition(Qt::RightDockWidgetArea, QTabWidget::North);
 
+	// Create the doc
+	doc_ = new Document(this);
+
 	// Info widget
 	auto* infoDock = new QDockWidget(tr("Info"), this);
 
