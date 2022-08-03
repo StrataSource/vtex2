@@ -200,13 +200,15 @@ void ViewerMainWindow::setup_menubar() {
 		[this]()
 		{
 			viewer_->zoomIn();
-		}, Qt::Key_ZoomIn);
+		},
+		Qt::Key_ZoomIn);
 	viewMenu->addAction(
 		QIcon::fromTheme("setZoom-out", QIcon(":/zoom-minus.svg")), "Zoom Out",
 		[this]()
 		{
 			viewer_->zoomOut();
-		}, Qt::Key_ZoomOut);
+		},
+		Qt::Key_ZoomOut);
 
 	// Help menu
 	auto* helpMenu = menuBar()->addMenu(tr("Help"));
