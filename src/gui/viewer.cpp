@@ -135,16 +135,16 @@ void ViewerMainWindow::setup_menubar() {
 		});
 	toolBar->addSeparator();
 	toolBar->addAction(
-		QIcon::fromTheme("zoom-in", QIcon(":/zoom-plus.svg")), "Zoom In",
+		QIcon::fromTheme("setZoom-in", QIcon(":/zoom-plus.svg")), "Zoom In",
 		[this]()
 		{
-			viewer_->zoom(.1f);
+			viewer_->zoomIn();
 		});
 	toolBar->addAction(
-		QIcon::fromTheme("zoom-out", QIcon(":/zoom-minus.svg")), "Zoom Out",
+		QIcon::fromTheme("setZoom-out", QIcon(":/zoom-minus.svg")), "Zoom Out",
 		[this]()
 		{
-			viewer_->zoom(-.1f);
+			viewer_->zoomOut();
 		});
 	// File menu
 	auto* fileMenu = menuBar()->addMenu(tr("File"));
@@ -196,19 +196,17 @@ void ViewerMainWindow::setup_menubar() {
 	// View menu
 	auto* viewMenu = menuBar()->addMenu(tr("View"));
 	viewMenu->addAction(
-		QIcon::fromTheme("zoom-in", QIcon(":/zoom-plus.svg")), "Zoom In",
+		QIcon::fromTheme("setZoom-in", QIcon(":/zoom-plus.svg")), "Zoom In",
 		[this]()
 		{
-			viewer_->zoom(.1f);
-		},
-		QKeySequence::ZoomIn);
+			viewer_->zoomIn();
+		}, Qt::Key_ZoomIn);
 	viewMenu->addAction(
-		QIcon::fromTheme("zoom-out", QIcon(":/zoom-minus.svg")), "Zoom Out",
+		QIcon::fromTheme("setZoom-out", QIcon(":/zoom-minus.svg")), "Zoom Out",
 		[this]()
 		{
-			viewer_->zoom(-.1f);
-		},
-		QKeySequence::ZoomOut);
+			viewer_->zoomOut();
+		}, Qt::Key_ZoomOut);
 
 	// Help menu
 	auto* helpMenu = menuBar()->addMenu(tr("Help"));
@@ -596,7 +594,7 @@ void ImageViewWidget::paintEvent(QPaintEvent* event) {
 	painter.drawImage(target, image_, QRect(0, 0, image_.width(), image_.height()));
 }
 
-void ImageViewWidget::zoom(float amount) {
+void ImageViewWidget::setZoom(float amount) {
 	if (amount == 0)
 		return; // Skip expensive repaint
 	zoom_ += amount;
