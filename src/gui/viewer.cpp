@@ -1,4 +1,3 @@
-
 #include "viewer.hpp"
 
 #include "common/enums.hpp"
@@ -39,14 +38,6 @@ using namespace VTFLib;
 
 ViewerMainWindow::ViewerMainWindow(QWidget* pParent)
 	: QMainWindow(pParent) {
-	setup_ui();
-}
-
-void ViewerMainWindow::setup_ui() {
-	setWindowTitle("VTFView");
-
-	setTabPosition(Qt::LeftDockWidgetArea, QTabWidget::North);
-	setTabPosition(Qt::RightDockWidgetArea, QTabWidget::North);
 	// Create the doc
 	doc_ = new Document(this);
 	connect(
@@ -58,6 +49,14 @@ void ViewerMainWindow::setup_ui() {
 			else
 				this->unmark_modified();
 		});
+	setup_ui();
+}
+
+void ViewerMainWindow::setup_ui() {
+	setWindowTitle("VTFView");
+
+	setTabPosition(Qt::LeftDockWidgetArea, QTabWidget::North);
+	setTabPosition(Qt::RightDockWidgetArea, QTabWidget::North);
 
 	// Info widget
 	auto* infoDock = new QDockWidget(tr("Info"), this);
@@ -152,18 +151,18 @@ void ViewerMainWindow::setup_ui() {
 	shortcuts_[Actions::Save] = saveShortcut;
 
 	saveShortcut = new QShortcut(
-		QKeySequence(Qt::CTRL + Qt::Key_Equal), this,
+		QKeySequence(Qt::Key_ZoomIn), this,
 		[this]
 		{
-			this->viewer_->zoom(0.1);
+			this->viewer_->zoomIn();
 		});
 	shortcuts_[Actions::ZoomIn] = saveShortcut;
 
 	saveShortcut = new QShortcut(
-		QKeySequence(Qt::CTRL + Qt::Key_Minus), this,
+		QKeySequence(Qt::Key_ZoomOut), this,
 		[this]
 		{
-			this->viewer_->zoom(-0.1);
+			this->viewer_->zoomOut();
 		});
 	shortcuts_[Actions::ZoomOut] = saveShortcut;
 }
@@ -198,13 +197,13 @@ void ViewerMainWindow::setup_menubar() {
 		});
 	toolBar->addSeparator();
 	toolBar->addAction(
-		QIcon::fromTheme("setZoom-in", QIcon(":/zoom-plus.svg")), "Zoom In",
+		QIcon::fromTheme("zoom-in", QIcon(":/zoom-plus.svg")), "Zoom In",
 		[this]()
 		{
 			viewer_->zoomIn();
 		});
 	toolBar->addAction(
-		QIcon::fromTheme("setZoom-out", QIcon(":/zoom-minus.svg")), "Zoom Out",
+		QIcon::fromTheme("zoom-out", QIcon(":/zoom-minus.svg")), "Zoom Out",
 		[this]()
 		{
 			viewer_->zoomOut();
@@ -256,22 +255,6 @@ void ViewerMainWindow::setup_menubar() {
 			this->close();
 		});
 
-	// View menu
-	auto* viewMenu = menuBar()->addMenu(tr("View"));
-	viewMenu->addAction(
-		QIcon::fromTheme("setZoom-in", QIcon(":/zoom-plus.svg")), "Zoom In",
-		[this]()
-		{
-			viewer_->zoomIn();
-		},
-		Qt::Key_ZoomIn);
-	viewMenu->addAction(
-		QIcon::fromTheme("setZoom-out", QIcon(":/zoom-minus.svg")), "Zoom Out",
-		[this]()
-		{
-			viewer_->zoomOut();
-		},
-		Qt::Key_ZoomOut);
 
 	// Help menu
 	auto* helpMenu = menuBar()->addMenu(tr("Help"));
