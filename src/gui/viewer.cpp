@@ -4,7 +4,6 @@
 #include "common/image.hpp"
 #include "common/util.hpp"
 #include "fmt/format.h"
-#include "imageImportDialog.hpp"
 
 #include <QApplication>
 #include <QCheckBox>
@@ -245,7 +244,7 @@ void ViewerMainWindow::setup_menubar() {
 			this->reload_file();
 		});
 	fileMenu->addAction(
-		style()->standardIcon(QStyle::SP_ArrowUp), "Import File",
+		QIcon::fromTheme("document-import", style()->standardIcon(QStyle::SP_ArrowUp)), "Import File",
 		[this]()
 		{
 			this->import_file();
@@ -397,20 +396,38 @@ void ViewerMainWindow::reload_file() {
 void ViewerMainWindow::import_file() {
 	auto filename = QFileDialog::getOpenFileName(this, tr("Open Image"), QString(), "JPG Files (*.jpg)").toUtf8();
 
-	//	ImageImportDialog dialog(this);
-	//	dialog.exec();
-
 	if (filename.isEmpty())
 		return;
 
 	auto image = imglib::image_begin(filename);
 
+	if (!image) {
+		QMessageBox::warning(
+			this, "File does not exist", fmt::format(FMT_STRING("Failed to open image: {}"), filename.data()).c_str(),
+			QMessageBox::Ok);
+		return;
+	}
+
 	auto data = imglib::image_load(image);
+
+	auto comps = data.info.comps;
+	auto w = data.info.w;
+	auto h = data.info.h;
+	VTFImageFormat format;
+	switch (data.info.type) {
+		case imglib::UInt16:
+			format = IMAGE_FORMAT_RGBA16161616F;
+			break; // @TODO: Add RGBA16 support
+		case imglib::Float:
+			format = (comps == 3) ? IMAGE_FORMAT_RGB323232F : IMAGE_FORMAT_RGBA32323232F;
+			break;
+		default:
+			format = (comps == 3) ? IMAGE_FORMAT_RGB888 : IMAGE_FORMAT_RGBA8888;
+	}
 
 	auto file = new CVTFFile();
 
-	// TODO: Properly handle different image formats
-	file->Create(data.info.w, data.info.h, 1, 1, 1, VTFImageFormat::IMAGE_FORMAT_RGB888);
+	file->Create(data.info.w, data.info.h, 1, 1, 1, format);
 	file->SetData(1, 1, 1, 0, (vlByte*)data.data);
 
 	document()->load_file(file);
@@ -643,7 +660,7 @@ void ImageViewWidget::paintEvent(QPaintEvent* event) {
 	painter.drawImage(target, image_, QRect(0, 0, image_.width(), image_.height()));
 }
 
-void ImageViewWidget::setZoom(float amount) {
+void ImageViewWidget::zoom(float amount) {
 	if (amount == 0)
 		return; // Skip expensive repaint
 	zoom_ += amount;

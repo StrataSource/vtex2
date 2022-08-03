@@ -144,13 +144,13 @@ namespace vtfview
 			repaint();
 		}
 
-		void setZoom(float amount);
+		void zoom(float amount);
 		inline void zoomIn(float amount = 0.1f) {
-			setZoom(amount);
+			zoom(amount);
 		}
 
 		inline void zoomOut(float amount = 0.1f) {
-			setZoom(amount * -1);
+			zoom(amount * -1);
 		}
 
 	private:
