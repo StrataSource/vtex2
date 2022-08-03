@@ -5,14 +5,13 @@
 
 namespace vtfview
 {
-	class ImageImportDialog : public QDialog
-	{
+	class ImageImportDialog : public QDialog {
 		Q_OBJECT;
 
 	public:
-		explicit ImageImportDialog( QWidget *pParent = nullptr );
+		explicit ImageImportDialog(QWidget* pParent = nullptr);
 
 	private:
-		QDialogButtonBox *buttonBox;
+		QDialogButtonBox* buttonBox;
 	};
 } // namespace vtfview

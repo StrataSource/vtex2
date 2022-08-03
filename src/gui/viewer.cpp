@@ -45,7 +45,7 @@ void ViewerMainWindow::setup_ui() {
 
 	setTabPosition(Qt::LeftDockWidgetArea, QTabWidget::North);
 	setTabPosition(Qt::RightDockWidgetArea, QTabWidget::North);
-// Create the doc
+	// Create the doc
 	doc_ = new Document(this);
 	// Info widget
 	auto* infoDock = new QDockWidget(tr("Info"), this);
@@ -84,7 +84,7 @@ void ViewerMainWindow::setup_ui() {
 
 	auto* viewSettings = new ImageSettingsWidget(viewer_, this);
 	connect(viewSettings, &ImageSettingsWidget::fileModified, this, &ViewerMainWindow::mark_modified);
-// Hookup VTF change events
+	// Hookup VTF change events
 	connect(
 		document(), &Document::vtfFileChanged,
 		[this, viewSettings, resList, infoWidget](const std::string& path, VTFLib::CVTFFile* file)
@@ -186,18 +186,29 @@ void ViewerMainWindow::setup_menubar() {
 			this->import_file();
 		});
 	fileMenu->addSeparator();
-	fileMenu->addAction("Exit", [this]() {
-		this->close();
-	});
+	fileMenu->addAction(
+		"Exit",
+		[this]()
+		{
+			this->close();
+		});
 
 	// View menu
 	auto* viewMenu = menuBar()->addMenu(tr("View"));
-	viewMenu->addAction(QIcon::fromTheme("zoom-in", QIcon(":/zoom-plus.svg")), "Zoom In", [this]() {
-		viewer_->zoom(.1f);
-	}, QKeySequence::ZoomIn);
-	viewMenu->addAction(QIcon::fromTheme("zoom-out", QIcon(":/zoom-minus.svg")), "Zoom Out", [this]() {
-		viewer_->zoom(-.1f);
-	}, QKeySequence::ZoomOut);
+	viewMenu->addAction(
+		QIcon::fromTheme("zoom-in", QIcon(":/zoom-plus.svg")), "Zoom In",
+		[this]()
+		{
+			viewer_->zoom(.1f);
+		},
+		QKeySequence::ZoomIn);
+	viewMenu->addAction(
+		QIcon::fromTheme("zoom-out", QIcon(":/zoom-minus.svg")), "Zoom Out",
+		[this]()
+		{
+			viewer_->zoom(-.1f);
+		},
+		QKeySequence::ZoomOut);
 
 	// Help menu
 	auto* helpMenu = menuBar()->addMenu(tr("Help"));
@@ -337,10 +348,10 @@ void ViewerMainWindow::reload_file() {
 }
 
 void ViewerMainWindow::import_file() {
-	auto filename = QFileDialog::getOpenFileName(this, tr("Open Image"), QString(),"JPG Files (*.jpg)").toUtf8();
+	auto filename = QFileDialog::getOpenFileName(this, tr("Open Image"), QString(), "JPG Files (*.jpg)").toUtf8();
 
-//	ImageImportDialog dialog(this);
-//	dialog.exec();
+	//	ImageImportDialog dialog(this);
+	//	dialog.exec();
 
 	if (filename.isEmpty())
 		return;
