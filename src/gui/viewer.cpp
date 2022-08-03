@@ -24,9 +24,8 @@
 #include <QSpinBox>
 #include <QStyle>
 #include <QComboBox>
+#include <QToolBar>
 
-#include <iostream>
-#include <cfloat>
 #include <iostream>
 
 using namespace vtfview;
@@ -180,9 +179,12 @@ void ViewerMainWindow::setup_menubar() {
 		{
 			this->reload_file();
 		});
-	fileMenu->addAction(style()->standardIcon(QStyle::SP_ArrowUp), "Import", [this]() {
-		 this->import_file();
-	});
+	fileMenu->addAction(
+		style()->standardIcon(QStyle::SP_ArrowUp), "Import File",
+		[this]()
+		{
+			this->import_file();
+		});
 	fileMenu->addSeparator();
 	fileMenu->addAction("Exit", [this]() {
 		this->close();
@@ -245,6 +247,7 @@ void ViewerMainWindow::mark_modified() {
 	if (title.endsWith("*"))
 		return;
 	setWindowTitle(title + "*");
+	document()->mark_modified();
 }
 
 void ViewerMainWindow::unmark_modified() {
@@ -254,6 +257,7 @@ void ViewerMainWindow::unmark_modified() {
 		title.remove(title.length() - 1, 1);
 		setWindowTitle(title);
 	}
+	document()->unmark_modified();
 }
 
 void ViewerMainWindow::open_file() {
@@ -320,22 +324,23 @@ void ViewerMainWindow::save(bool saveAs) {
 
 void ViewerMainWindow::new_file() {
 	if (!ask_save())
-			return;
+		return;
+
 	document()->new_file();
 }
 
 void ViewerMainWindow::reload_file() {
-
-		if (!ask_save())
+	if (!ask_save())
 		return;
-	document()->new_file();
+
+	document()->reload_file();
 }
 
 void ViewerMainWindow::import_file() {
-	auto filename = QFileDialog::getOpenFileName(this, tr("Open Image"), QString(),"All files (*.*)").toUtf8();
+	auto filename = QFileDialog::getOpenFileName(this, tr("Open Image"), QString(),"JPG Files (*.jpg)").toUtf8();
 
-	ImageImportDialog dialog(this);
-	dialog.exec();
+//	ImageImportDialog dialog(this);
+//	dialog.exec();
 
 	if (filename.isEmpty())
 		return;
@@ -350,7 +355,7 @@ void ViewerMainWindow::import_file() {
 	file->Create(data.info.w, data.info.h, 1, 1, 1, VTFImageFormat::IMAGE_FORMAT_RGB888);
 	file->SetData(1, 1, 1, 0, (vlByte*)data.data);
 
-	load_file(file, filename);
+	document()->load_file(file);
 
 	// free image data
 	imglib::image_free(data);

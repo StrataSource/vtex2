@@ -41,6 +41,7 @@ namespace vtfview
 		void open_file();
 		void new_file();
 		void reload_file();
+		void import_file();
 
 		bool load_file(const char* path) {
 			return document()->load_file(path);
