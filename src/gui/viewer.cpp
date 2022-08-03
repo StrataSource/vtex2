@@ -24,6 +24,8 @@
 #include <QSpinBox>
 #include <QStyle>
 #include <QComboBox>
+#include <QKeySequence>
+#include <QShortcut>
 #include <QToolBar>
 
 #include <iostream>
@@ -47,10 +49,20 @@ void ViewerMainWindow::setup_ui() {
 	setTabPosition(Qt::RightDockWidgetArea, QTabWidget::North);
 	// Create the doc
 	doc_ = new Document(this);
+	connect(
+		doc_, &Document::vtfFileModified,
+		[this](bool modified)
+		{
+			if (modified)
+				this->mark_modified();
+			else
+				this->unmark_modified();
+		});
+
 	// Info widget
 	auto* infoDock = new QDockWidget(tr("Info"), this);
 
-	auto* infoWidget = new InfoWidget(this);
+	auto* infoWidget = new InfoWidget(doc_, this);
 
 	infoDock->setWidget(infoWidget);
 	addDockWidget(Qt::RightDockWidgetArea, infoDock);
@@ -58,14 +70,14 @@ void ViewerMainWindow::setup_ui() {
 	// Resource list
 	auto* resDock = new QDockWidget(tr("Resources"), this);
 
-	auto* resList = new ResourceWidget(this);
+	auto* resList = new ResourceWidget(doc_, this);
 
 	resDock->setWidget(resList);
 	addDockWidget(Qt::RightDockWidgetArea, resDock);
 
 	// Main image viewer
 	auto* scroller = new QScrollArea(this);
-	viewer_ = new ImageViewWidget(this);
+	viewer_ = new ImageViewWidget(doc_, this);
 	scroller->setAlignment(Qt::AlignCenter);
 
 	connect(
@@ -82,7 +94,7 @@ void ViewerMainWindow::setup_ui() {
 	// Viewer settings
 	auto* viewerDock = new QDockWidget(tr("Viewer Settings"), this);
 
-	auto* viewSettings = new ImageSettingsWidget(viewer_, this);
+	auto* viewSettings = new ImageSettingsWidget(doc_, viewer_, this);
 	connect(viewSettings, &ImageSettingsWidget::fileModified, this, &ViewerMainWindow::mark_modified);
 	// Hookup VTF change events
 	connect(
@@ -100,9 +112,60 @@ void ViewerMainWindow::setup_ui() {
 
 	// Tabify the docks
 	tabifyDockWidget(infoDock, resDock);
+	infoDock->activateWindow();
 
 	// Setup the menu bars
 	setup_menubar();
+
+	// Register global actions
+	shortcuts_.reserve(Action_Count);
+	auto* saveShortcut = new QShortcut(
+		QKeySequence::Save, this,
+		[this]
+		{
+			this->save();
+		});
+	shortcuts_[Actions::Save] = saveShortcut;
+
+	saveShortcut = new QShortcut(
+		QKeySequence::SaveAs, this,
+		[this]
+		{
+			this->save(true);
+		});
+	shortcuts_[Actions::SaveAs] = saveShortcut;
+
+	saveShortcut = new QShortcut(
+		QKeySequence("Ctrl+Shift+R"), this,
+		[this]
+		{
+			this->reload_file();
+		});
+	shortcuts_[Actions::Reload] = saveShortcut;
+
+	saveShortcut = new QShortcut(
+		QKeySequence::Open, this,
+		[this]
+		{
+			this->open_file();
+		});
+	shortcuts_[Actions::Save] = saveShortcut;
+
+	saveShortcut = new QShortcut(
+		QKeySequence(Qt::CTRL + Qt::Key_Equal), this,
+		[this]
+		{
+			this->viewer_->zoom(0.1);
+		});
+	shortcuts_[Actions::ZoomIn] = saveShortcut;
+
+	saveShortcut = new QShortcut(
+		QKeySequence(Qt::CTRL + Qt::Key_Minus), this,
+		[this]
+		{
+			this->viewer_->zoom(-0.1);
+		});
+	shortcuts_[Actions::ZoomOut] = saveShortcut;
 }
 
 void ViewerMainWindow::setup_menubar() {
@@ -274,7 +337,6 @@ void ViewerMainWindow::unmark_modified() {
 void ViewerMainWindow::open_file() {
 	if (!ask_save())
 		return;
-	document()->unload_file();
 
 	auto file =
 		QFileDialog::getOpenFileName(this, tr("Open VTF"), QString(), "Valve Texture Format (*.vtf);;All files (*.*)");
@@ -344,7 +406,7 @@ void ViewerMainWindow::reload_file() {
 	if (!ask_save())
 		return;
 
-	document()->reload_file();
+	document()->load_file(document()->path().c_str());
 }
 
 void ViewerMainWindow::import_file() {
@@ -416,19 +478,13 @@ static inline constexpr struct {
 	{IMAGE_FORMAT_R32F, "R32F"},
 	{IMAGE_FORMAT_RGB323232F, "RGB323232F"},
 	{IMAGE_FORMAT_RGBA32323232F, "RGBA32323232F"},
-	{IMAGE_FORMAT_NV_DST16, "NV_DST16"},
-	{IMAGE_FORMAT_NV_DST24, "NV_DST24"},
-	{IMAGE_FORMAT_NV_INTZ, "NV_INTZ"},
-	{IMAGE_FORMAT_NV_RAWZ, "NV_RAWZ"},
-	{IMAGE_FORMAT_ATI_DST16, "ATI_DST16"},
-	{IMAGE_FORMAT_ATI_DST24, "ATI_DST24"},
-	{IMAGE_FORMAT_NV_NULL, "NV_NULL"},
 	{IMAGE_FORMAT_ATI2N, "ATI2N"},
 	{IMAGE_FORMAT_ATI1N, "ATI1N"},
 };
 
-InfoWidget::InfoWidget(QWidget* pParent)
-	: QWidget(pParent) {
+InfoWidget::InfoWidget(Document* doc, QWidget* pParent)
+	: QWidget(pParent),
+	  doc_(doc) {
 	setup_ui();
 }
 
@@ -503,6 +559,12 @@ void InfoWidget::setup_ui() {
 	}
 	imageGroupLayout->addWidget(new QLabel("Image format:", this), row, 0);
 	imageGroupLayout->addWidget(formatCombo_, row, 1);
+	connect(
+		formatCombo_, qOverload<int>(&QComboBox::currentIndexChanged),
+		[this](int index)
+		{
+			doc_->set_format(IMAGE_FORMATS[index].format);
+		});
 	++row;
 
 	for (auto& f : INFO_FIELDS) {
@@ -528,7 +590,7 @@ void InfoWidget::setup_ui() {
 // ImageViewWidget
 //////////////////////////////////////////////////////////////////////////////////
 
-ImageViewWidget::ImageViewWidget(QWidget* pParent)
+ImageViewWidget::ImageViewWidget(Document*, QWidget* pParent)
 	: QWidget(pParent) {
 	setMinimumSize(256, 256);
 }
@@ -618,7 +680,7 @@ void ImageViewWidget::update_size() {
 // ResourceWidget
 //////////////////////////////////////////////////////////////////////////////////
 
-ResourceWidget::ResourceWidget(QWidget* parent)
+ResourceWidget::ResourceWidget(Document*, QWidget* parent)
 	: QWidget(parent) {
 	setup_ui();
 }
@@ -707,7 +769,7 @@ constexpr struct TextureFlag {
 //////////////////////////////////////////////////////////////////////////////////
 // ImageSettingsWidget
 //////////////////////////////////////////////////////////////////////////////////
-ImageSettingsWidget::ImageSettingsWidget(ImageViewWidget* viewer, QWidget* parent)
+ImageSettingsWidget::ImageSettingsWidget(Document*, ImageViewWidget* viewer, QWidget* parent)
 	: QWidget(parent) {
 	setup_ui(viewer);
 }

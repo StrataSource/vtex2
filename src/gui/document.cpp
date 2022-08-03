@@ -2,8 +2,11 @@
 #include <QFileDialog>
 #include <QMessageBox>
 
+#include <fmt/format.h>
+
 #include "document.hpp"
 #include "common/util.hpp"
+#include "common/enums.hpp"
 
 using namespace vtfview;
 
@@ -34,14 +37,21 @@ void Document::unmark_modified() {
 bool Document::save(const std::string& path) {
 	if (!dirty_)
 		return true;
-	dirty_ = false;
+
+	// Image needs converting
+	if (format_ != IMAGE_FORMAT_NONE) {
+		fmt::print(
+			"Converting image from {} to {} on save...\n", ImageFormatToString(file_->GetFormat()),
+			ImageFormatToString(format_));
+		if (!file_->ConvertInPlace(format_))
+			return false;
+	}
 
 	if (!file_->Save(path.empty() ? path_.c_str() : path.c_str())) {
 		return false;
 	}
 
 	unmark_modified();
-	emit vtfFileModified(false);
 	return true;
 }
 
@@ -52,7 +62,7 @@ bool Document::load_file(const char* path) {
 		return false;
 
 	bool ok = load_file_internal(buffer, numRead);
-	delete buffer;
+	delete[] buffer;
 
 	path_ = path;
 	emit vtfFileChanged(path_, file_);
@@ -81,14 +91,26 @@ void Document::unload_file() {
 	file_ = nullptr;
 	path_ = "";
 	unmark_modified();
+	format_ = IMAGE_FORMAT_NONE;
 }
 
 bool Document::load_file_internal(const void* data, size_t size) {
+	auto* oldFile = file_;
 	file_ = new VTFLib::CVTFFile();
 	if (!file_->Load(data, size)) {
 		delete file_;
-		file_ = nullptr;
+		file_ = oldFile;
 		return false;
 	}
+	delete oldFile;
 	return true;
+}
+
+void Document::set_format(VTFImageFormat format) {
+	if (format == file_->GetFormat()) {
+		format_ = IMAGE_FORMAT_NONE;
+		return;
+	}
+	format_ = format;
+	mark_modified();
 }
