@@ -149,14 +149,14 @@ void ViewerMainWindow::setup_ui() {
 		});
 
 	shortcuts_[Actions::ZoomIn] = new QShortcut(
-		QKeySequence(Qt::Key_ZoomIn), this,
+		QKeySequence(Qt::CTRL + Qt::Key_Plus), this,
 		[this]
 		{
 			this->viewer_->zoomIn();
 		});
 
 	shortcuts_[Actions::ZoomOut] = new QShortcut(
-		QKeySequence(Qt::Key_ZoomOut), this,
+		QKeySequence(Qt::CTRL + Qt::Key_Minus), this,
 		[this]
 		{
 			this->viewer_->zoomOut();
