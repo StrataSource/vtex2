@@ -120,53 +120,47 @@ void ViewerMainWindow::setup_ui() {
 
 	// Register global actions
 	shortcuts_.reserve(Action_Count);
-	auto* saveShortcut = new QShortcut(
+	shortcuts_[Actions::Save] = new QShortcut(
 		QKeySequence::Save, this,
 		[this]
 		{
 			this->save();
 		});
-	shortcuts_[Actions::Save] = saveShortcut;
 
-	saveShortcut = new QShortcut(
+	shortcuts_[Actions::SaveAs] = new QShortcut(
 		QKeySequence::SaveAs, this,
 		[this]
 		{
 			this->save(true);
 		});
-	shortcuts_[Actions::SaveAs] = saveShortcut;
 
-	saveShortcut = new QShortcut(
+	shortcuts_[Actions::Reload] = new QShortcut(
 		QKeySequence("Ctrl+Shift+R"), this,
 		[this]
 		{
 			this->reload_file();
 		});
-	shortcuts_[Actions::Reload] = saveShortcut;
 
-	saveShortcut = new QShortcut(
+	shortcuts_[Actions::Save] = new QShortcut(
 		QKeySequence::Open, this,
 		[this]
 		{
 			this->open_file();
 		});
-	shortcuts_[Actions::Save] = saveShortcut;
 
-	saveShortcut = new QShortcut(
+	shortcuts_[Actions::ZoomIn] = new QShortcut(
 		QKeySequence(Qt::Key_ZoomIn), this,
 		[this]
 		{
 			this->viewer_->zoomIn();
 		});
-	shortcuts_[Actions::ZoomIn] = saveShortcut;
 
-	saveShortcut = new QShortcut(
+	shortcuts_[Actions::ZoomOut] = new QShortcut(
 		QKeySequence(Qt::Key_ZoomOut), this,
 		[this]
 		{
 			this->viewer_->zoomOut();
 		});
-	shortcuts_[Actions::ZoomOut] = saveShortcut;
 }
 
 void ViewerMainWindow::setup_menubar() {
@@ -183,7 +177,7 @@ void ViewerMainWindow::setup_menubar() {
 		style()->standardIcon(QStyle::SP_DialogSaveButton), "Save File",
 		[this]()
 		{
-			document()->save();
+			this->save();
 		});
 	toolBar->addAction(
 		style()->standardIcon(QStyle::SP_DialogOpenButton), "Open File",
@@ -390,7 +384,7 @@ void ViewerMainWindow::reload_file() {
 	if (!ask_save())
 		return;
 
-	document()->load_file(document()->path().c_str());
+	document()->reload_file();
 }
 
 void ViewerMainWindow::import_file() {
@@ -522,6 +516,7 @@ void InfoWidget::update_info(VTFLib::CVTFFile* file) {
 	// Select the correct image format
 	for (int i = 0; i < util::ArraySize(IMAGE_FORMATS); ++i) {
 		if (IMAGE_FORMATS[i].format == file->GetFormat()) {
+			// FIXME: IT CRASHES HERE
 			formatCombo_->setCurrentIndex(i);
 			break;
 		}
@@ -620,6 +615,7 @@ void ImageViewWidget::set_vtf(VTFLib::CVTFFile* file) {
 		return;
 
 	update_size();
+	update(); // Force redraw
 }
 
 void ImageViewWidget::paintEvent(QPaintEvent* event) {

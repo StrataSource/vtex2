@@ -22,6 +22,7 @@ void Document::reload_file() {
 	auto oldPath = path_;
 	unload_file();
 	load_file(oldPath.c_str());
+	unmark_modified();
 }
 
 void Document::mark_modified() {
