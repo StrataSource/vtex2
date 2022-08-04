@@ -410,19 +410,24 @@ void ViewerMainWindow::import_file() {
 
 	auto data = imglib::image_load(image);
 
-	auto comps = data.info.comps;
-	auto w = data.info.w;
-	auto h = data.info.h;
+	if (!data.data) {
+		QMessageBox::warning(
+			this, "Could not load image", fmt::format(FMT_STRING("Failed to load image: {}"), filename.data()).c_str(),
+			QMessageBox::Ok);
+		return;
+	}
+
 	VTFImageFormat format;
 	switch (data.info.type) {
 		case imglib::UInt16:
 			format = IMAGE_FORMAT_RGBA16161616F;
 			break; // @TODO: Add RGBA16 support
 		case imglib::Float:
-			format = (comps == 3) ? IMAGE_FORMAT_RGB323232F : IMAGE_FORMAT_RGBA32323232F;
+			format = (data.info.comps == 3) ? IMAGE_FORMAT_RGB323232F : IMAGE_FORMAT_RGBA32323232F;
 			break;
 		default:
-			format = (comps == 3) ? IMAGE_FORMAT_RGB888 : IMAGE_FORMAT_RGBA8888;
+			format = (data.info.comps == 3) ? IMAGE_FORMAT_RGB888 : IMAGE_FORMAT_RGBA8888;
+			break;
 	}
 
 	auto file = new CVTFFile();
