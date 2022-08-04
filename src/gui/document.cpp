@@ -78,8 +78,8 @@ bool Document::load_file(const void* data, size_t size) {
 }
 
 bool Document::load_file(VTFLib::CVTFFile* file) {
-	emit vtfFileChanged("", file);
 	file_ = file;
+	emit vtfFileChanged("", file);
 	path_ = "";
 	return true;
 }
