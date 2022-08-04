@@ -123,7 +123,7 @@ void ViewerMainWindow::setup_ui() {
 	setup_menubar();
 
 	// Register global actions
-	shortcuts_.reserve(Action_Count);
+	shortcuts_.resize(Action_Count);
 	auto* saveShortcut = new QShortcut(
 		QKeySequence::Save, this,
 		[this]
