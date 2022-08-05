@@ -21,3 +21,4 @@ CMakeCache.txt
 cmake-build-*/
 
 
+*.vtf
