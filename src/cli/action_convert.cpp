@@ -173,6 +173,68 @@ const OptionList& ActionConvert::get_options() const {
 				.type(OptType::Bool)
 				.value(false)
 				.help("Generate thumbnail for the image"));
+
+		opts::normal = opts.add(
+			ActionOption()
+				.short_opt("-n")
+				.long_opt("--normal")
+				.type(OptType::Bool)
+				.value(false)
+				.help("Create a normal map"));
+
+		opts::clamps =
+			opts.add(ActionOption().long_opt("--clamps").type(OptType::Bool).value(false).help("Clamp on S axis"));
+
+		opts::clampt =
+			opts.add(ActionOption().long_opt("--clampt").type(OptType::Bool).value(false).help("Clamp on T axis"));
+
+		opts::clampu =
+			opts.add(ActionOption().long_opt("--clampu").type(OptType::Bool).value(false).help("Clamp on U axis"));
+
+		opts::pointsample = opts.add(
+			ActionOption()
+				.long_opt("--pointsample")
+				.type(OptType::Bool)
+				.value(false)
+				.help("Set point sampling method"));
+
+		opts::trilinear = opts.add(
+			ActionOption()
+				.long_opt("--trilinear")
+				.type(OptType::Bool)
+				.value(false)
+				.help("Set trilinear sampling method"));
+
+		opts::mips = opts.add(
+			ActionOption()
+				.short_opt("-m")
+				.long_opt("--mips")
+				.type(OptType::Int)
+				.value(10)
+				.help("Number of mips to generate"));
+
+		opts::startframe = opts.add(
+			ActionOption().long_opt("--start-frame").type(OptType::Int).value(0).help("Animation frame to start on"));
+
+		opts::bumpscale =
+			opts.add(ActionOption().long_opt("--bumpscale").type(OptType::Float).value(0).help("Bumpscale"));
+
+		opts::gammacorrect = opts.add(
+			ActionOption().long_opt("--gamma-correct").type(OptType::Float).value(0).help("Apply gamma correction"));
+
+		opts::srgb = opts.add(
+			ActionOption()
+				.long_opt("--srgb")
+				.type(OptType::Bool)
+				.value(false)
+				.help("Process this image in sRGB color space"));
+
+		opts::thumbnail = opts.add(
+			ActionOption()
+				.long_opt("--thumbnail")
+				.type(OptType::Bool)
+				.value(false)
+				.help("Generate thumbnail for the image"));
 	};
 	return opts;
 }
@@ -231,8 +293,7 @@ bool ActionConvert::process_file(
 		outFile = srcFile.parent_path() / srcFile.filename().replace_extension(".vtf");
 	}
 
-	auto format = ImageFromatFromUserString(formatStr.c_str());
-
+	auto format = ImageFormatFromUserString(formatStr.c_str());
 	auto* vtfFile = new CVTFFile();
 
 	add_image_data(srcFile, vtfFile, format, true);
@@ -263,7 +324,6 @@ bool ActionConvert::process_file(
 		std::cerr << "Could not generate mipmaps!\n";
 		return false;
 	}
-
 	if (!vtfFile->Save(outFile.string().c_str())) {
 		std::cerr << fmt::format("Could not save file {}: {}\n", outFile.string(), vlGetLastError());
 		return false;
@@ -276,7 +336,6 @@ bool ActionConvert::process_file(
 // Add base image info. Lowest mip level.
 bool ActionConvert::add_image_data(
 	const std::filesystem::path& imageSrc, VTFLib::CVTFFile* file, VTFImageFormat format, bool create) {
-
 	auto image = imglib::image_begin(imageSrc);
 	if (!image)
 		return false;

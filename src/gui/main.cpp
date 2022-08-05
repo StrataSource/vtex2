@@ -1,11 +1,6 @@
-
-#include <QApplication>
-
-#include <cstdlib>
-#include <cstring>
-
 #include "viewer.hpp"
-#include "VTFLib.h"
+#include <QApplication>
+#include <QStyleFactory>
 
 int main(int argc, char** argv) {
 	QApplication app(argc, argv);
@@ -22,5 +17,5 @@ int main(int argc, char** argv) {
 	}
 	pMainWindow->show();
 
-	return app.exec();
+	return QApplication::exec();
 }

@@ -1,35 +1,32 @@
+#include "viewer.hpp"
 
-#include <QGroupBox>
-#include <QVBoxLayout>
-#include <QLabel>
-#include <QGridLayout>
-#include <QDockWidget>
-#include <QPainter>
-#include <QHeaderView>
-#include <QSpinBox>
-#include <QPushButton>
-#include <QCheckBox>
-#include <QScrollArea>
-#include <QMessageBox>
-#include <QCloseEvent>
-#include <QFileDialog>
+#include "common/enums.hpp"
+#include "common/image.hpp"
+#include "common/util.hpp"
+#include "fmt/format.h"
+
 #include <QApplication>
+#include <QCheckBox>
+#include <QCloseEvent>
+#include <QDockWidget>
+#include <QFileDialog>
+#include <QGridLayout>
+#include <QGroupBox>
+#include <QHeaderView>
+#include <QLabel>
 #include <QMenuBar>
-#include <QToolBar>
+#include <QMessageBox>
+#include <QPainter>
+#include <QPushButton>
+#include <QScrollArea>
+#include <QSpinBox>
 #include <QStyle>
 #include <QComboBox>
 #include <QKeySequence>
 #include <QShortcut>
+#include <QToolBar>
 
 #include <iostream>
-#include <cfloat>
-
-#include "fmt/format.h"
-
-#include "viewer.hpp"
-
-#include "common/util.hpp"
-#include "common/enums.hpp"
 
 using namespace vtfview;
 using namespace VTFLib;
@@ -40,15 +37,6 @@ using namespace VTFLib;
 
 ViewerMainWindow::ViewerMainWindow(QWidget* pParent)
 	: QMainWindow(pParent) {
-	setup_ui();
-}
-
-void ViewerMainWindow::setup_ui() {
-	setWindowTitle("VTFView");
-
-	setTabPosition(Qt::LeftDockWidgetArea, QTabWidget::North);
-	setTabPosition(Qt::RightDockWidgetArea, QTabWidget::North);
-
 	// Create the doc
 	doc_ = new Document(this);
 	connect(
@@ -60,6 +48,17 @@ void ViewerMainWindow::setup_ui() {
 			else
 				this->unmark_modified();
 		});
+	setup_ui();
+}
+
+void ViewerMainWindow::setup_ui() {
+	setWindowTitle("VTFView");
+
+	setTabPosition(Qt::LeftDockWidgetArea, QTabWidget::North);
+	setTabPosition(Qt::RightDockWidgetArea, QTabWidget::North);
+
+	// Create the doc
+	doc_ = new Document(this);
 
 	// Info widget
 	auto* infoDock = new QDockWidget(tr("Info"), this);
@@ -88,7 +87,6 @@ void ViewerMainWindow::setup_ui() {
 		{
 			viewer_->set_vtf(file);
 		});
-
 	scroller->setVisible(true);
 	scroller->setWidget(viewer_);
 
@@ -99,7 +97,6 @@ void ViewerMainWindow::setup_ui() {
 
 	auto* viewSettings = new ImageSettingsWidget(doc_, viewer_, this);
 	connect(viewSettings, &ImageSettingsWidget::fileModified, this, &ViewerMainWindow::mark_modified);
-
 	// Hookup VTF change events
 	connect(
 		document(), &Document::vtfFileChanged,
@@ -111,7 +108,6 @@ void ViewerMainWindow::setup_ui() {
 
 			setWindowTitle(fmt::format(FMT_STRING("VTFView - [{}]"), str::get_filename(path.c_str())).c_str());
 		});
-
 	viewerDock->setWidget(viewSettings);
 	addDockWidget(Qt::LeftDockWidgetArea, viewerDock);
 
@@ -130,47 +126,41 @@ void ViewerMainWindow::setup_ui() {
 		{
 			this->save();
 		});
-	shortcuts_[Actions::Save] = saveShortcut;
 
-	saveShortcut = new QShortcut(
+	shortcuts_[Actions::SaveAs] = new QShortcut(
 		QKeySequence::SaveAs, this,
 		[this]
 		{
 			this->save(true);
 		});
-	shortcuts_[Actions::SaveAs] = saveShortcut;
 
-	saveShortcut = new QShortcut(
+	shortcuts_[Actions::Reload] = new QShortcut(
 		QKeySequence("Ctrl+Shift+R"), this,
 		[this]
 		{
 			this->reload_file();
 		});
-	shortcuts_[Actions::Reload] = saveShortcut;
 
-	saveShortcut = new QShortcut(
+	shortcuts_[Actions::Save] = new QShortcut(
 		QKeySequence::Open, this,
 		[this]
 		{
 			this->open_file();
 		});
-	shortcuts_[Actions::Save] = saveShortcut;
 
-	saveShortcut = new QShortcut(
-		QKeySequence(Qt::CTRL + Qt::Key_Equal), this,
+	shortcuts_[Actions::ZoomIn] = new QShortcut(
+		QKeySequence(Qt::CTRL + Qt::Key_Plus), this,
 		[this]
 		{
-			this->viewer_->zoom(0.1);
+			this->viewer_->zoomIn();
 		});
-	shortcuts_[Actions::ZoomIn] = saveShortcut;
 
-	saveShortcut = new QShortcut(
+	shortcuts_[Actions::ZoomOut] = new QShortcut(
 		QKeySequence(Qt::CTRL + Qt::Key_Minus), this,
 		[this]
 		{
-			this->viewer_->zoom(-0.1);
+			this->viewer_->zoomOut();
 		});
-	shortcuts_[Actions::ZoomOut] = saveShortcut;
 }
 
 void ViewerMainWindow::setup_menubar() {
@@ -187,7 +177,7 @@ void ViewerMainWindow::setup_menubar() {
 		style()->standardIcon(QStyle::SP_DialogSaveButton), "Save File",
 		[this]()
 		{
-			document()->save();
+			this->save();
 		});
 	toolBar->addAction(
 		style()->standardIcon(QStyle::SP_DialogOpenButton), "Open File",
@@ -206,15 +196,14 @@ void ViewerMainWindow::setup_menubar() {
 		QIcon::fromTheme("zoom-in", QIcon(":/zoom-plus.svg")), "Zoom In",
 		[this]()
 		{
-			viewer_->zoom(.1f);
+			viewer_->zoomIn();
 		});
 	toolBar->addAction(
 		QIcon::fromTheme("zoom-out", QIcon(":/zoom-minus.svg")), "Zoom Out",
 		[this]()
 		{
-			viewer_->zoom(-.1f);
+			viewer_->zoomOut();
 		});
-
 	// File menu
 	auto* fileMenu = menuBar()->addMenu(tr("File"));
 	fileMenu->addAction(
@@ -248,6 +237,12 @@ void ViewerMainWindow::setup_menubar() {
 		{
 			this->reload_file();
 		});
+	fileMenu->addAction(
+		QIcon::fromTheme("document-import", style()->standardIcon(QStyle::SP_ArrowUp)), "Import File",
+		[this]()
+		{
+			this->import_file();
+		});
 	fileMenu->addSeparator();
 	fileMenu->addAction(
 		"Exit",
@@ -269,7 +264,7 @@ void ViewerMainWindow::setup_menubar() {
 		});
 	helpMenu->addAction(
 		"About Qt",
-		[this]()
+		[]()
 		{
 			qApp->aboutQt();
 		});
@@ -304,6 +299,7 @@ void ViewerMainWindow::mark_modified() {
 	if (title.endsWith("*"))
 		return;
 	setWindowTitle(title + "*");
+	document()->mark_modified();
 }
 
 void ViewerMainWindow::unmark_modified() {
@@ -313,6 +309,7 @@ void ViewerMainWindow::unmark_modified() {
 		title.remove(title.length() - 1, 1);
 		setWindowTitle(title);
 	}
+	document()->unmark_modified();
 }
 
 void ViewerMainWindow::open_file() {
@@ -321,7 +318,6 @@ void ViewerMainWindow::open_file() {
 
 	auto file =
 		QFileDialog::getOpenFileName(this, tr("Open VTF"), QString(), "Valve Texture Format (*.vtf);;All files (*.*)");
-
 	if (file.isEmpty())
 		return;
 
@@ -380,6 +376,7 @@ void ViewerMainWindow::save(bool saveAs) {
 void ViewerMainWindow::new_file() {
 	if (!ask_save())
 		return;
+
 	document()->new_file();
 }
 
@@ -387,7 +384,56 @@ void ViewerMainWindow::reload_file() {
 	if (!ask_save())
 		return;
 
-	document()->load_file(document()->path().c_str());
+	document()->reload_file();
+}
+
+void ViewerMainWindow::import_file() {
+	auto filename = QFileDialog::getOpenFileName(this, tr("Open Image"), QString(), "JPG Files (*.jpg)").toUtf8();
+
+	if (filename.isEmpty())
+		return;
+
+	auto image = imglib::image_begin(filename);
+
+	if (!image) {
+		QMessageBox::warning(
+			this, "File does not exist", fmt::format(FMT_STRING("Failed to open image: {}"), filename.data()).c_str(),
+			QMessageBox::Ok);
+		return;
+	}
+
+	auto data = imglib::image_load(image);
+
+	if (!data.data) {
+		QMessageBox::warning(
+			this, "Could not load image", fmt::format(FMT_STRING("Failed to load image: {}"), filename.data()).c_str(),
+			QMessageBox::Ok);
+		return;
+	}
+
+	VTFImageFormat format;
+	switch (data.info.type) {
+		case imglib::UInt16:
+			format = IMAGE_FORMAT_RGBA16161616F;
+			break; // @TODO: Add RGBA16 support
+		case imglib::Float:
+			format = (data.info.comps == 3) ? IMAGE_FORMAT_RGB323232F : IMAGE_FORMAT_RGBA32323232F;
+			break;
+		default:
+			format = (data.info.comps == 3) ? IMAGE_FORMAT_RGB888 : IMAGE_FORMAT_RGBA8888;
+			break;
+	}
+
+	auto file = new CVTFFile();
+
+	file->Create(data.info.w, data.info.h, 1, 1, 1, format);
+	file->SetData(1, 1, 1, 0, (vlByte*)data.data);
+
+	document()->load_file(file);
+
+	// free image data
+	imglib::image_free(data);
+	imglib::image_end(image);
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -470,6 +516,7 @@ void InfoWidget::update_info(VTFLib::CVTFFile* file) {
 	// Select the correct image format
 	for (int i = 0; i < util::ArraySize(IMAGE_FORMATS); ++i) {
 		if (IMAGE_FORMATS[i].format == file->GetFormat()) {
+			// FIXME: IT CRASHES HERE
 			formatCombo_->setCurrentIndex(i);
 			break;
 		}
@@ -563,12 +610,12 @@ void ImageViewWidget::set_vtf(VTFLib::CVTFFile* file) {
 
 	zoom_ = 1.f;
 	pos_ = {0, 0};
-
 	// No file, sad.
 	if (!file)
 		return;
 
 	update_size();
+	update(); // Force redraw
 }
 
 void ImageViewWidget::paintEvent(QPaintEvent* event) {
@@ -581,13 +628,11 @@ void ImageViewWidget::paintEvent(QPaintEvent* event) {
 	vlUInt imageWidth, imageHeight, imageDepth;
 	CVTFFile::ComputeMipmapDimensions(
 		file_->GetWidth(), file_->GetHeight(), file_->GetDepth(), mip_, imageWidth, imageHeight, imageDepth);
-
 	// Needs decode
 	if (frame_ != currentFrame_ || mip_ != currentMip_ || face_ != currentFace_) {
 		const bool hasAlpha = CVTFFile::GetImageFormatInfo(file_->GetFormat()).uiAlphaBitsPerPixel > 0;
 		const VTFImageFormat format = hasAlpha ? IMAGE_FORMAT_RGBA8888 : IMAGE_FORMAT_RGB888;
-		auto size = file_->ComputeMipmapSize(file_->GetWidth(), file_->GetHeight(), 1, mip_, format);
-
+		auto size = CVTFFile::ComputeMipmapSize(file_->GetWidth(), file_->GetHeight(), 1, mip_, format);
 		if (imgBuf_) {
 			free(imgBuf_);
 		}
@@ -597,7 +642,6 @@ void ImageViewWidget::paintEvent(QPaintEvent* event) {
 		bool ok = CVTFFile::Convert(
 			file_->GetData(frame_, face_, 0, mip_), (vlByte*)imgBuf_, imageWidth, imageHeight, file_->GetFormat(),
 			format);
-
 		if (!ok) {
 			std::cerr << "Could not convert image for display.\n";
 			return;
@@ -605,7 +649,6 @@ void ImageViewWidget::paintEvent(QPaintEvent* event) {
 
 		image_ = QImage(
 			(uchar*)imgBuf_, imageWidth, imageHeight, hasAlpha ? QImage::Format_RGBA8888 : QImage::Format_RGB888);
-
 		currentFace_ = face_;
 		currentFrame_ = frame_;
 		currentMip_ = mip_;
@@ -774,7 +817,7 @@ void ImageSettingsWidget::setup_ui(ImageViewWidget* viewer) {
 	startFrame_ = new QSpinBox(this);
 	connect(
 		startFrame_, &QSpinBox::textChanged,
-		[viewer, this](const QString&)
+		[this](const QString&)
 		{
 			if (!file_)
 				return;

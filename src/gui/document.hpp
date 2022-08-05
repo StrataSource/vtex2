@@ -16,7 +16,7 @@ namespace vtfview
 		Q_OBJECT;
 
 	public:
-		Document(QObject* parent);
+		explicit Document(QObject* parent);
 
 		bool load_file(const char* path);
 		bool load_file(const void* data, size_t size);

@@ -44,6 +44,7 @@ namespace vtfview
 		void open_file();
 		void new_file();
 		void reload_file();
+		void import_file();
 
 		bool load_file(const char* path) {
 			return document()->load_file(path);
@@ -144,6 +145,13 @@ namespace vtfview
 		}
 
 		void zoom(float amount);
+		inline void zoomIn(float amount = 0.1f) {
+			zoom(amount);
+		}
+
+		inline void zoomOut(float amount = 0.1f) {
+			zoom(amount * -1);
+		}
 
 	private:
 		void update_size();

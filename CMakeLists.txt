@@ -25,8 +25,8 @@ add_definitions(-DVTFLIB_STATIC=1)
 # Common code
 ##############################
 set(COMMON_SRC
-	src/common/image.cpp
-	src/common/enums.cpp)
+		src/common/image.cpp
+		src/common/enums.cpp)
 
 add_library(libcom STATIC ${COMMON_SRC})
 
@@ -55,14 +55,14 @@ if (BUILD_GUI)
 			src/gui/viewer.cpp
 			src/gui/document.cpp
 			res/resource.qrc)
-			
+
 	add_executable(vtfview ${VIEWER_SRC})
-endif()
+endif ()
 
 # Set up the debugger so it can run the program without copying a million dlls
-if(WIN32)
+if (WIN32)
 	set_target_properties(vtfview PROPERTIES VS_DEBUGGER_ENVIRONMENT "PATH=%PATH%;${QT_BASEDIR}/bin;")
-endif()
+endif ()
 
 target_link_libraries(vtex2 PRIVATE vtflib_static libcom fmt::fmt)
 target_include_directories(vtex2 PRIVATE src external)
@@ -75,4 +75,4 @@ if (BUILD_GUI)
 	find_package(Qt5 REQUIRED COMPONENTS Widgets Core Gui Svg)
 	target_link_libraries(vtfview PRIVATE Qt5::Widgets Qt5::Core Qt5::Gui Qt5::Svg)
 	target_include_directories(vtfview PRIVATE ${QT_INCLUDE} ${QT_INCLUDE}/QtWidgets ${QT_INCLUDE}/QtGui ${QT_INCLUDE}/QtCore)
-endif()
+endif ()
