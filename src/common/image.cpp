@@ -348,3 +348,15 @@ const char* imglib::image_get_extension(FileFormat format) {
 			return "";
 	}
 }
+
+VTFImageFormat imglib::get_vtf_format(const ImageInfo_t& info) {
+	switch (info.type) {
+		case imglib::UInt16:
+			// @TODO: How to handle RGBA16? DONT i guess
+			return IMAGE_FORMAT_RGBA16161616F;
+		case imglib::Float:
+			return (info.comps == 3) ? IMAGE_FORMAT_RGB323232F : IMAGE_FORMAT_RGBA32323232F;
+		default:
+			return (info.comps == 3) ? IMAGE_FORMAT_RGB888 : IMAGE_FORMAT_RGBA8888;
+	}
+}

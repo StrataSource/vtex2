@@ -36,8 +36,6 @@ namespace opts
 	static int thumbnail;
 } // namespace opts
 
-static VTFImageFormat format_for_image(const imglib::ImageInfo_t& info);
-
 std::string ActionConvert::get_help() const {
 	return "Convert a generic image file to VTF";
 }
@@ -348,7 +346,7 @@ bool ActionConvert::add_image_data(
 			imglib::image_end(image);
 		});
 
-	auto dataFormat = format_for_image(data.info);
+	auto dataFormat = imglib::get_vtf_format(data.info);
 	vlByte* dest = nullptr;
 	// Convert to requested format, if possible.
 	if (format != IMAGE_FORMAT_NONE) {
@@ -376,18 +374,4 @@ bool ActionConvert::add_image_data(
 
 	free(dest);
 	return true;
-}
-
-// Determine the VTF format we want to use for the image
-static VTFImageFormat format_for_image(const imglib::ImageInfo_t& info) {
-	if (info.comps == 3) {
-		if (info.type == imglib::Float)
-			return IMAGE_FORMAT_RGB323232F;
-		return info.type == imglib::UInt8 ? IMAGE_FORMAT_RGB888 : IMAGE_FORMAT_RGBA16161616;
-	}
-	else {
-		if (info.type == imglib::Float)
-			return IMAGE_FORMAT_RGBA32323232F;
-		return info.type == imglib::UInt8 ? IMAGE_FORMAT_RGBA8888 : IMAGE_FORMAT_RGBA16161616;
-	}
 }
