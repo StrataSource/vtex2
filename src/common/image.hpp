@@ -6,6 +6,8 @@
 #include <filesystem>
 #include <string>
 
+#include "VTFLib.h"
+
 namespace imglib
 {
 
@@ -126,5 +128,10 @@ namespace imglib
 	void convert_rgba32_rgba16(const void* rgba32, void* rgba16, int w, int h);
 	void convert_rgb8_rgb16(const void* rgb8, void* rgb16, int w, int h);
 	void convert_rgba8_rgba16(const void* rgba8, void* rgba16, int w, int h);
+
+	/**
+	 * Get a compatible VTF image format for the image data
+	 */
+	VTFImageFormat get_vtf_format(const ImageInfo_t& info);
 
 } // namespace imglib

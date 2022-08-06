@@ -120,7 +120,7 @@ void ViewerMainWindow::setup_ui() {
 
 	// Register global actions
 	shortcuts_.resize(Action_Count);
-	auto* saveShortcut = new QShortcut(
+	shortcuts_[Actions::Save] = new QShortcut(
 		QKeySequence::Save, this,
 		[this]
 		{
@@ -411,22 +411,9 @@ void ViewerMainWindow::import_file() {
 		return;
 	}
 
-	VTFImageFormat format;
-	switch (data.info.type) {
-		case imglib::UInt16:
-			format = IMAGE_FORMAT_RGBA16161616F;
-			break; // @TODO: Add RGBA16 support
-		case imglib::Float:
-			format = (data.info.comps == 3) ? IMAGE_FORMAT_RGB323232F : IMAGE_FORMAT_RGBA32323232F;
-			break;
-		default:
-			format = (data.info.comps == 3) ? IMAGE_FORMAT_RGB888 : IMAGE_FORMAT_RGBA8888;
-			break;
-	}
-
 	auto file = new CVTFFile();
 
-	file->Create(data.info.w, data.info.h, 1, 1, 1, format);
+	file->Create(data.info.w, data.info.h, 1, 1, 1, imglib::get_vtf_format(data.info));
 	file->SetData(1, 1, 1, 0, (vlByte*)data.data);
 
 	document()->load_file(file);

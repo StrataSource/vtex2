@@ -190,7 +190,7 @@ bool ActionExtract::extract_file(
 			free(imageData);
 		});
 
-	// Only supported format for Hdr is 32-bit RGBA - everything else will be squashed down into RGB formats
+	// Only supported format for Hdr is 32-bit RGBA - everything else will be squashed down into 32 or 24bpp RGB/RGBA
 	bool destIsFloat = (targetFmt == imglib::Hdr);
 	bool ok = false;
 	if (destIsFloat) {
