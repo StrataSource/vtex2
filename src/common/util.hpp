@@ -7,6 +7,7 @@
 #include <fstream>
 #include <string>
 #include <memory>
+#include <charconv>
 
 #include "strtools.hpp"
 
@@ -34,6 +35,11 @@ namespace util
 		stream.read((char*)outPtr, size);
 
 		return size;
+	}
+
+	static inline bool strtoint(const std::string& str, int& out) {
+		auto [p, err] = std::from_chars(str.c_str(), str.c_str() + str.length(), out);
+		return err == std::errc();
 	}
 
 	/**
