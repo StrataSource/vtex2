@@ -114,61 +114,6 @@ const OptionList& ActionConvert::get_options() const {
 				.value(false)
 				.help("Recursively process directories"));
 
-		opts::normal = opts.add(
-			ActionOption()
-				.short_opt("-n")
-				.long_opt("--normal")
-				.type(OptType::Bool)
-				.value(false)
-				.help("Create a normal map"));
-
-		opts::clamps =
-			opts.add(ActionOption().long_opt("--clamps").type(OptType::Bool).value(false).help("Clamp on S axis"));
-
-		opts::clampt =
-			opts.add(ActionOption().long_opt("--clampt").type(OptType::Bool).value(false).help("Clamp on T axis"));
-
-		opts::clampu =
-			opts.add(ActionOption().long_opt("--clampu").type(OptType::Bool).value(false).help("Clamp on U axis"));
-
-		opts::pointsample = opts.add(
-			ActionOption()
-				.long_opt("--pointsample")
-				.type(OptType::Bool)
-				.value(false)
-				.help("Set point sampling method"));
-
-		opts::trilinear = opts.add(
-			ActionOption()
-				.long_opt("--trilinear")
-				.type(OptType::Bool)
-				.value(false)
-				.help("Set trilinear sampling method"));
-
-		opts::mips = opts.add(
-			ActionOption()
-				.short_opt("-m")
-				.long_opt("--mips")
-				.type(OptType::Int)
-				.value(10)
-				.help("Number of mips to generate"));
-
-		opts::startframe = opts.add(
-			ActionOption().long_opt("--start-frame").type(OptType::Int).value(0).help("Animation frame to start on"));
-
-		opts::bumpscale =
-			opts.add(ActionOption().long_opt("--bumpscale").type(OptType::Float).value(0).help("Bumpscale"));
-
-		opts::gammacorrect = opts.add(
-			ActionOption().long_opt("--gamma-correct").type(OptType::Float).value(0).help("Apply gamma correction"));
-
-		opts::srgb = opts.add(
-			ActionOption()
-				.long_opt("--srgb")
-				.type(OptType::Bool)
-				.value(false)
-				.help("Process this image in sRGB color space"));
-
 		opts::thumbnail = opts.add(
 			ActionOption()
 				.long_opt("--thumbnail")
@@ -230,13 +175,6 @@ const OptionList& ActionConvert::get_options() const {
 				.type(OptType::Bool)
 				.value(false)
 				.help("Process this image in sRGB color space"));
-
-		opts::thumbnail = opts.add(
-			ActionOption()
-				.long_opt("--thumbnail")
-				.type(OptType::Bool)
-				.value(false)
-				.help("Generate thumbnail for the image"));
 
 		opts::version = opts.add(
 			ActionOption().long_opt("--version").type(OptType::String).value("7.5").help("Set the VTF version to use"));
