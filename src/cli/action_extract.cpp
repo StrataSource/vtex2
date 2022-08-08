@@ -92,23 +92,25 @@ int ActionExtract::exec(const OptionList& opts) {
 	const bool recursive = opts.get(opts::recursive).get<bool>();
 
 	if (std::filesystem::is_directory(file)) {
-		// Recursively process dirs
-		std::function<bool(const std::filesystem::path&)> processDir =
-			[&opts, &processDir, this, recursive](const std::filesystem::path& path)
-		{
-			auto it = std::filesystem::directory_iterator(path);
+		if (recursive) {
+			auto it = std::filesystem::recursive_directory_iterator(file);
 			for (auto& dirent : it) {
-				if (dirent.is_directory() && !processDir(dirent))
-					return false;
-				// check that we're actually a VTF
-				if (dirent.path().extension() != ".vtf")
+				if (dirent.is_directory() || dirent.path().extension() != ".vtf")
 					continue;
 				if (!extract_file(opts, dirent, ""))
-					return false;
+					return 1;
 			}
-			return true;
-		};
-		return processDir(file) ? 0 : 1;
+		}
+		else {
+			auto it = std::filesystem::directory_iterator(file);
+			for (auto& dirent : it) {
+				if (dirent.is_directory() || dirent.path().extension() != ".vtf")
+					continue;
+				if (!extract_file(opts, dirent, ""))
+					return 1;
+			}
+		}
+		return 0;
 	}
 	else {
 		return extract_file(opts, file, output) ? 0 : 1;
