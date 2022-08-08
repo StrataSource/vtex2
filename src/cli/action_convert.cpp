@@ -102,7 +102,7 @@ const OptionList& ActionConvert::get_options() const {
 				.metavar("file")
 				.type(OptType::String)
 				.value("")
-				.help("Image file to convert")
+				.help("Image file to convert or directory to process")
 				.required(true)
 				.end_of_line(true));
 

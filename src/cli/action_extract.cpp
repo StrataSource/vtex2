@@ -54,7 +54,7 @@ const OptionList& ActionExtract::get_options() const {
 				.metavar("file")
 				.type(OptType::String)
 				.value("")
-				.help("VTF file to convert")
+				.help("VTF file to convert or directory to process")
 				.required(true)
 				.end_of_line(true));
 
