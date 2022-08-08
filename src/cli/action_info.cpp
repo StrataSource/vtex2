@@ -96,6 +96,10 @@ int ActionInfo::exec(const OptionList& opts) {
 		FMT_STRING("{} frame(s), {} face(s), {} mipmaps\n"), file_->GetFrameCount(), file_->GetFaceCount(),
 		file_->GetMipmapCount());
 
+	if (file_->GetMajorVersion() >= 7 && file_->GetMinorVersion() >= 6) {
+		fmt::print(FMT_STRING("DEFLATE compression level {}\n"), file_->GetAuxCompressionLevel());
+	}
+
 	if (details) {
 		vlUInt dataSize;
 		if (auto* crcPtr = file_->GetResourceData(VTF_RSRC_CRC, dataSize)) {
@@ -145,8 +149,12 @@ void ActionInfo::cleanup() {
 
 void ActionInfo::compact_info() {
 	fmt::print(
-		FMT_STRING("VTF {}.{}, {} x {} x {}, {} frames, {} mipmaps, {} faces, image format {}\n"),
+		FMT_STRING("VTF {}.{}, {} x {} x {}, {} frames, {} mipmaps, {} faces, image format {}"),
 		file_->GetMajorVersion(), file_->GetMinorVersion(), file_->GetWidth(), file_->GetHeight(), file_->GetDepth(),
 		file_->GetFrameCount(), file_->GetMipmapCount(), file_->GetFaceCount(),
 		ImageFormatToString(file_->GetFormat()));
+	if (file_->GetMajorVersion() >= 7 && file_->GetMinorVersion() >= 6)
+		fmt::print(FMT_STRING(", DEFLATE compression level {}\n"), file_->GetAuxCompressionLevel());
+	else
+		std::cout << "\n";
 }
