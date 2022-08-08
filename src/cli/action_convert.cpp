@@ -259,23 +259,31 @@ int ActionConvert::exec(const OptionList& opts) {
 	auto file = opts.get(opts::file).get<std::string>();
 
 	if (std::filesystem::is_directory(file)) {
-		// Recursively process dirs
-		std::function<bool(const std::filesystem::path&)> processDir =
-			[&opts, &processDir, this, recursive](const std::filesystem::path& path)
-		{
-			auto it = std::filesystem::directory_iterator(path);
+		if (recursive) {
+			auto it = std::filesystem::recursive_directory_iterator(file);
 			for (auto& dirent : it) {
-				if (dirent.is_directory() && !processDir(dirent))
-					return false;
+				if (dirent.is_directory())
+					continue;
 				// check that we're actually a convertable file
-				if (imglib::image_get_format_from_file(path.string().c_str()) == imglib::FileFormat::None)
+				if (imglib::image_get_format_from_file(dirent.path().string().c_str()) == imglib::FileFormat::None)
 					continue;
 				if (!process_file(opts, dirent, ""))
-					return false;
+					return 1;
 			}
-			return true;
-		};
-		return processDir(file) ? 0 : 1;
+		}
+		else {
+			auto it = std::filesystem::directory_iterator(file);
+			for (auto& dirent : it) {
+				if (dirent.is_directory())
+					continue;
+				// check that we're actually a convertable file
+				if (imglib::image_get_format_from_file(dirent.path().string().c_str()) == imglib::FileFormat::None)
+					continue;
+				if (!process_file(opts, dirent, ""))
+					return 1;
+			}
+		}
+		return 0;
 	}
 	else {
 		return process_file(opts, file, outfile) ? 0 : 1;
