@@ -34,7 +34,11 @@ namespace opts
 	static int startframe, bumpscale;
 	static int gammacorrect, srgb;
 	static int thumbnail;
+	static int version;
+	static int compress;
 } // namespace opts
+
+static bool get_version_from_str(const std::string& str, int& major, int& minor);
 
 std::string ActionConvert::get_help() const {
 	return "Convert a generic image file to VTF";
@@ -233,6 +237,18 @@ const OptionList& ActionConvert::get_options() const {
 				.type(OptType::Bool)
 				.value(false)
 				.help("Generate thumbnail for the image"));
+
+		opts::version = opts.add(
+			ActionOption().long_opt("--version").type(OptType::String).value("7.5").help("Set the VTF version to use"));
+
+		opts::compress = opts.add(
+			ActionOption()
+				.short_opt("-c")
+				.long_opt("--compress")
+				.type(OptType::Int)
+				.value(0)
+				.choices({"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"})
+				.help("DEFLATE compression level to use. 0=none, 9=max. This will force VTF version to 7.6"));
 	};
 	return opts;
 }
@@ -284,6 +300,8 @@ bool ActionConvert::process_file(
 	auto gammacorrect = opts.get(opts::gammacorrect).get<float>();
 	auto srgb = opts.get(opts::srgb).get<bool>();
 	auto thumbnail = opts.get(opts::thumbnail).get<bool>();
+	auto verStr = opts.get(opts::version).get<std::string>();
+	auto compressionLevel = opts.get(opts::compress).get<int>();
 
 	// If an out file name is not provided, we need to build our own
 	std::filesystem::path outFile;
@@ -302,12 +320,28 @@ bool ActionConvert::process_file(
 			delete vtfFile;
 		});
 
+	int majorVer, minorVer;
+	if (!get_version_from_str(verStr, majorVer, minorVer)) {
+		std::cerr << fmt::format("Invalid version '{}'! Valid versions: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6\n", verStr);
+		return false;
+	}
+
+	minorVer = (compressionLevel > 0) ? 6 : minorVer; // Force 7.6 if using DEFLATE
+	vtfFile->SetVersion(majorVer, minorVer);
+
+	// Set the DEFLATE compression level
+	if (compressionLevel > 0 && !vtfFile->SetAuxCompressionLevel(compressionLevel)) {
+		std::cerr << fmt::format("Could not set compression level to {}!\n", compressionLevel);
+		return false;
+	}
+
 	vtfFile->SetFlag(TEXTUREFLAGS_NORMAL, normal);
 	vtfFile->SetFlag(TEXTUREFLAGS_CLAMPS, clamps);
 	vtfFile->SetFlag(TEXTUREFLAGS_CLAMPT, clampt);
 	vtfFile->SetFlag(TEXTUREFLAGS_CLAMPU, clampu);
 	vtfFile->SetFlag(TEXTUREFLAGS_TRILINEAR, tri);
 	vtfFile->SetFlag(TEXTUREFLAGS_POINTSAMPLE, point);
+	vtfFile->SetFlag(TEXTUREFLAGS_SRGB, srgb);
 
 	vtfFile->SetStartFrame(startFrame);
 	vtfFile->ComputeReflectivity();
@@ -374,4 +408,13 @@ bool ActionConvert::add_image_data(
 
 	free(dest);
 	return true;
+}
+
+static bool get_version_from_str(const std::string& str, int& major, int& minor) {
+	auto pos = str.find('.');
+	if (pos == str.npos)
+		return false;
+	auto majorVer = str.substr(0, pos);
+	auto minorVer = str.substr(pos + 1);
+	return util::strtoint(majorVer, major) && util::strtoint(minorVer, minor);
 }
