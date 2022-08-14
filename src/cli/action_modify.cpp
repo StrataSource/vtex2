@@ -246,8 +246,8 @@ int ActionModify::exec(const OptionList& opts) {
 				if (dirent.is_directory())
 					continue;
 				// check that we're actually a vtf file
-				auto ext = str::get_ext(dirent.path().string().c_str());
-				if (str::strcasecmp(ext, "vtf"))
+				auto pathStr = dirent.path().extension().string();
+				if (str::strcasecmp(pathStr.c_str(), ".vtf"))
 					continue;
 				if (!process_file(opts, dirent))
 					return 1;
@@ -259,8 +259,8 @@ int ActionModify::exec(const OptionList& opts) {
 				if (dirent.is_directory())
 					continue;
 				// check that we're actually a vtf file
-				auto ext = str::get_ext(dirent.path().string().c_str());
-				if (str::strcasecmp(ext, "vtf"))
+				auto pathStr = dirent.path().extension().string();
+				if (str::strcasecmp(pathStr.c_str(), ".vtf"))
 					continue;
 				if (!process_file(opts, dirent))
 					return 1;
@@ -294,7 +294,10 @@ bool ActionModify::process_file(const OptionList& opts, const std::filesystem::p
 			delete vtfFile;
 		});
 
-	vtfFile->Load(srcFile.string().c_str(), false);
+	if (!vtfFile->Load(srcFile.string().c_str(), false)) {
+		std::cerr << fmt::format("Unable to load {}\n", srcFile.string());
+		return false;
+	}
 
 	if (!formatStr.empty()) {
 		auto format = ImageFormatFromUserString(formatStr.c_str());
@@ -336,9 +339,14 @@ bool ActionModify::process_file(const OptionList& opts, const std::filesystem::p
 		// TODO, we could modify the miplevel in the header and regenerate mips but this is a pretty horrible way to do this until we change vtflib
 	}
 
-	auto tempPath = srcFile;
+	/*auto tempPath = srcFile;
 	tempPath.replace_filename(std::filesystem::path("test.vtf"));
-	vtfFile->Save(tempPath.string().c_str());
+	vtfFile->Save(tempPath.string().c_str());*/
+
+	if (!vtfFile->Save(srcFile.string().c_str())) {
+		std::cerr << fmt::format("Unable to save {}\n", srcFile.string());
+		return false;
+	}
 
 	return true;
 }
