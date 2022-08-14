@@ -36,3 +36,13 @@ const char* GetResourceName(vlUInt resource);
  * ie rgb888 instead of IMAGE_FORMAT_RGB888
  */
 VTFImageFormat ImageFormatFromUserString(const char* userStr);
+
+/**
+ * Like ImageFormatFromUserString but for textureflags
+ */
+VTFImageFlag TextureFlagFromUserString(const char* userStr);
+
+/**
+ * Like ImageFormatFromUserString but for VTF resources
+ */
+VTFResourceEntryType ResourceFromUserString(const char* userStr);

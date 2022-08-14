@@ -11,6 +11,7 @@
 #include "action_info.hpp"
 #include "action_extract.hpp"
 #include "action_convert.hpp"
+#include "action_modify.hpp"
 #include "common/util.hpp"
 
 using namespace vtex2;
@@ -22,7 +23,7 @@ namespace vtex2
 }
 
 // Global list of actions
-static BaseAction* s_actions[] = {new ActionInfo(), new ActionExtract(), new ActionConvert()};
+static BaseAction* s_actions[] = {new ActionInfo(), new ActionExtract(), new ActionConvert(), new ActionModify{}};
 
 static bool handle_option(int argc, int& argIndex, char** argv, ActionOption& opt);
 static bool arg_compare(const char* arg, const char* argname);

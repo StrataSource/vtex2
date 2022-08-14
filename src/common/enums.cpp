@@ -369,3 +369,109 @@ VTFImageFormat ImageFormatFromUserString(const char* arg) {
 	else
 		return IMAGE_FORMAT_NONE;
 }
+
+VTFImageFlag TextureFlagFromUserString(const char* arg) {
+	if (str::strcasecmp("POINTSAMPLE", arg) == 0)
+		return TEXTUREFLAGS_POINTSAMPLE;
+	else if (str::strcasecmp("TRILINEAR", arg) == 0)
+		return TEXTUREFLAGS_TRILINEAR;
+	else if (str::strcasecmp("CLAMPS", arg) == 0)
+		return TEXTUREFLAGS_CLAMPS;
+	else if (str::strcasecmp("CLAMPT", arg) == 0)
+		return TEXTUREFLAGS_CLAMPT;
+	else if (str::strcasecmp("ANISOTROPIC", arg) == 0)
+		return TEXTUREFLAGS_ANISOTROPIC;
+	else if (str::strcasecmp("HINT_DXT5", arg) == 0)
+		return TEXTUREFLAGS_HINT_DXT5;
+	else if (str::strcasecmp("SRGB", arg) == 0)
+		return TEXTUREFLAGS_SRGB;
+	else if (str::strcasecmp("NOCOMPRESS", arg) == 0)
+		return TEXTUREFLAGS_DEPRECATED_NOCOMPRESS;
+	else if (str::strcasecmp("NORMAL", arg) == 0)
+		return TEXTUREFLAGS_NORMAL;
+	else if (str::strcasecmp("NOMIP", arg) == 0)
+		return TEXTUREFLAGS_NOMIP;
+	else if (str::strcasecmp("NOLOD", arg) == 0)
+		return TEXTUREFLAGS_NOLOD;
+	else if (str::strcasecmp("MINMIP", arg) == 0)
+		return TEXTUREFLAGS_MINMIP;
+	else if (str::strcasecmp("PROCEDURAL", arg) == 0)
+		return TEXTUREFLAGS_PROCEDURAL;
+	else if (str::strcasecmp("ONEBITALPHA", arg) == 0)
+		return TEXTUREFLAGS_ONEBITALPHA;
+	else if (str::strcasecmp("EIGHTBITALPHA", arg) == 0)
+		return TEXTUREFLAGS_EIGHTBITALPHA;
+	else if (str::strcasecmp("ENVMAP", arg) == 0)
+		return TEXTUREFLAGS_ENVMAP;
+	else if (str::strcasecmp("RENDERTARGET", arg) == 0)
+		return TEXTUREFLAGS_RENDERTARGET;
+	else if (str::strcasecmp("DEPTHRENDERTARGET", arg) == 0)
+		return TEXTUREFLAGS_DEPTHRENDERTARGET;
+	else if (str::strcasecmp("NODEBUGOVERRIDE", arg) == 0)
+		return TEXTUREFLAGS_NODEBUGOVERRIDE;
+	else if (str::strcasecmp("SINGLECOPY", arg) == 0)
+		return TEXTUREFLAGS_SINGLECOPY;
+	else if (str::strcasecmp("UNUSED0", arg) == 0)
+		return TEXTUREFLAGS_UNUSED0;
+	else if (str::strcasecmp("ONEOVERMIPLEVELINALPHA", arg) == 0)
+		return TEXTUREFLAGS_DEPRECATED_ONEOVERMIPLEVELINALPHA;
+	else if (str::strcasecmp("UNUSED1", arg) == 0)
+		return TEXTUREFLAGS_UNUSED1;
+	else if (str::strcasecmp("PREMULTCOLORBYONEOVERMIPLEVEL", arg) == 0)
+		return TEXTUREFLAGS_DEPRECATED_PREMULTCOLORBYONEOVERMIPLEVEL;
+	else if (str::strcasecmp("UNUSED2", arg) == 0)
+		return TEXTUREFLAGS_UNUSED2;
+	else if (str::strcasecmp("NORMALTODUDV", arg) == 0)
+		return TEXTUREFLAGS_DEPRECATED_NORMALTODUDV;
+	else if (str::strcasecmp("UNUSED3", arg) == 0)
+		return TEXTUREFLAGS_UNUSED3;
+	else if (str::strcasecmp("ALPHATESTMIPGENERATION", arg) == 0)
+		return TEXTUREFLAGS_DEPRECATED_ALPHATESTMIPGENERATION;
+	else if (str::strcasecmp("NODEPTHBUFFER", arg) == 0)
+		return TEXTUREFLAGS_NODEPTHBUFFER;
+	else if (str::strcasecmp("UNUSED4", arg) == 0)
+		return TEXTUREFLAGS_UNUSED4;
+	else if (str::strcasecmp("NICEFILTERED", arg) == 0)
+		return TEXTUREFLAGS_DEPRECATED_NICEFILTERED;
+	else if (str::strcasecmp("CLAMPU", arg) == 0)
+		return TEXTUREFLAGS_CLAMPU;
+	else if (str::strcasecmp("VERTEXTEXTURE", arg) == 0)
+		return TEXTUREFLAGS_VERTEXTEXTURE;
+	else if (str::strcasecmp("SSBUMP", arg) == 0)
+		return TEXTUREFLAGS_SSBUMP;
+	else if (str::strcasecmp("UNUSED5", arg) == 0)
+		return TEXTUREFLAGS_UNUSED5;
+	else if (str::strcasecmp("UNFILTERABLE_OK", arg) == 0)
+		return TEXTUREFLAGS_DEPRECATED_UNFILTERABLE_OK;
+	else if (str::strcasecmp("BORDER", arg) == 0)
+		return TEXTUREFLAGS_BORDER;
+	else if (str::strcasecmp("SPECVAR_RED", arg) == 0)
+		return TEXTUREFLAGS_DEPRECATED_SPECVAR_RED;
+	else if (str::strcasecmp("SPECVAR_ALPHA", arg) == 0)
+		return TEXTUREFLAGS_DEPRECATED_SPECVAR_ALPHA;
+	else if (str::strcasecmp("LAST", arg) == 0)
+		return TEXTUREFLAGS_LAST;
+	else
+		return TEXTUREFLAGS_COUNT;
+}
+
+VTFResourceEntryType ResourceFromUserString(const char* arg) {
+	if (str::strcasecmp("LOW_RES_IMAGE", arg) == 0)
+		return VTF_LEGACY_RSRC_LOW_RES_IMAGE;
+	else if (str::strcasecmp("IMAGE", arg) == 0)
+		return VTF_LEGACY_RSRC_IMAGE;
+	else if (str::strcasecmp("SHEET", arg) == 0)
+		return VTF_RSRC_SHEET;
+	else if (str::strcasecmp("CRC", arg) == 0)
+		return VTF_RSRC_CRC;
+	else if (str::strcasecmp("TEXTURE_LOD_SETTINGS", arg) == 0)
+		return VTF_RSRC_TEXTURE_LOD_SETTINGS;
+	else if (str::strcasecmp("TEXTURE_SETTINGS_EX", arg) == 0)
+		return VTF_RSRC_TEXTURE_SETTINGS_EX;
+	else if (str::strcasecmp("KEY_VALUE_DATA", arg) == 0)
+		return VTF_RSRC_KEY_VALUE_DATA;
+	else if (str::strcasecmp("AUX_COMPRESSION_INFO", arg) == 0)
+		return VTF_RSRC_AUX_COMPRESSION_INFO;
+	else
+		return VTF_RSRC_MAX_DICTIONARY_ENTRIES;
+}
