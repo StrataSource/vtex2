@@ -253,6 +253,8 @@ bool ActionConvert::process_file(
 	std::filesystem::path outFile;
 	if (userOutputFile.empty()) {
 		outFile = srcFile.parent_path() / srcFile.filename().replace_extension(".vtf");
+	} else {
+		outFile = srcFile.parent_path()  / userOutputFile;
 	}
 
 	auto format = ImageFormatFromUserString(formatStr.c_str());
@@ -326,12 +328,17 @@ bool ActionConvert::add_image_data(
 			imglib::image_end(image);
 		});
 
+	if (!data.data)
+		return false;
+
 	auto dataFormat = imglib::get_vtf_format(data.info);
 	vlByte* dest = nullptr;
 	// Convert to requested format, if possible.
 	if (format != IMAGE_FORMAT_NONE) {
-		auto fmtInfo = CVTFFile::GetImageFormatInfo(format);
-		dest = (vlByte*)malloc(data.info.w * data.info.h * fmtInfo.uiBytesPerPixel);
+
+		auto sizeRequired = CVTFFile::ComputeImageSize(data.info.w, data.info.h, 1, format);
+		dest = (vlByte*)malloc(sizeRequired);
+
 		if (!CVTFFile::Convert((vlByte*)data.data, dest, data.info.w, data.info.h, dataFormat, format)) {
 			std::cerr << fmt::format(
 				"Could not convert from {} to {}!\n", ImageFormatToString(dataFormat), ImageFormatToString(format));
