@@ -15,7 +15,7 @@
 using namespace imglib;
 
 FILE* imglib::image_begin(const char* filePath) {
-	return fopen(filePath, "r");
+	return fopen(filePath, "rb");
 }
 
 ImageInfo_t imglib::image_info(FILE* fp) {
