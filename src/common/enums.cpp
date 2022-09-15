@@ -68,24 +68,14 @@ const char* ImageFormatToString(VTFImageFormat format) {
 			return "IMAGE_FORMAT_RGB323232F";
 		case IMAGE_FORMAT_RGBA32323232F:
 			return "IMAGE_FORMAT_RGBA32323232F";
-		case IMAGE_FORMAT_NV_DST16:
-			return "IMAGE_FORMAT_NV_DST16";
-		case IMAGE_FORMAT_NV_DST24:
-			return "IMAGE_FORMAT_NV_DST24";
-		case IMAGE_FORMAT_NV_INTZ:
-			return "IMAGE_FORMAT_NV_INTZ";
-		case IMAGE_FORMAT_NV_RAWZ:
-			return "IMAGE_FORMAT_NV_RAWZ";
-		case IMAGE_FORMAT_ATI_DST16:
-			return "IMAGE_FORMAT_ATI_DST16";
-		case IMAGE_FORMAT_ATI_DST24:
-			return "IMAGE_FORMAT_ATI_DST24";
 		case IMAGE_FORMAT_NV_NULL:
 			return "IMAGE_FORMAT_NV_NULL";
 		case IMAGE_FORMAT_ATI2N:
 			return "IMAGE_FORMAT_ATI2N";
 		case IMAGE_FORMAT_ATI1N:
 			return "IMAGE_FORMAT_ATI1N";
+		case IMAGE_FORMAT_BC7:
+			return "IMAGE_FORMAT_BC7";
 		case IMAGE_FORMAT_COUNT:
 			return "IMAGE_FORMAT_COUNT";
 		case IMAGE_FORMAT_NONE:
@@ -156,24 +146,14 @@ VTFImageFormat ImageFormatFromString(const char* arg) {
 		return IMAGE_FORMAT_RGB323232F;
 	else if (str::strcasecmp("IMAGE_FORMAT_RGBA32323232F", arg) == 0)
 		return IMAGE_FORMAT_RGBA32323232F;
-	else if (str::strcasecmp("IMAGE_FORMAT_NV_DST16", arg) == 0)
-		return IMAGE_FORMAT_NV_DST16;
-	else if (str::strcasecmp("IMAGE_FORMAT_NV_DST24", arg) == 0)
-		return IMAGE_FORMAT_NV_DST24;
-	else if (str::strcasecmp("IMAGE_FORMAT_NV_INTZ", arg) == 0)
-		return IMAGE_FORMAT_NV_INTZ;
-	else if (str::strcasecmp("IMAGE_FORMAT_NV_RAWZ", arg) == 0)
-		return IMAGE_FORMAT_NV_RAWZ;
-	else if (str::strcasecmp("IMAGE_FORMAT_ATI_DST16", arg) == 0)
-		return IMAGE_FORMAT_ATI_DST16;
-	else if (str::strcasecmp("IMAGE_FORMAT_ATI_DST24", arg) == 0)
-		return IMAGE_FORMAT_ATI_DST24;
 	else if (str::strcasecmp("IMAGE_FORMAT_NV_NULL", arg) == 0)
 		return IMAGE_FORMAT_NV_NULL;
 	else if (str::strcasecmp("IMAGE_FORMAT_ATI2N", arg) == 0)
 		return IMAGE_FORMAT_ATI2N;
 	else if (str::strcasecmp("IMAGE_FORMAT_ATI1N", arg) == 0)
 		return IMAGE_FORMAT_ATI1N;
+	else if (str::strcasecmp("IMAGE_FORMAT_BC7", arg) == 0)
+		return IMAGE_FORMAT_BC7;
 	else if (str::strcasecmp("IMAGE_FORMAT_COUNT", arg) == 0)
 		return IMAGE_FORMAT_COUNT;
 	else
@@ -346,24 +326,14 @@ VTFImageFormat ImageFormatFromUserString(const char* arg) {
 		return IMAGE_FORMAT_RGB323232F;
 	else if (str::strcasecmp("RGBA32323232F", arg) == 0)
 		return IMAGE_FORMAT_RGBA32323232F;
-	else if (str::strcasecmp("NV_DST16", arg) == 0)
-		return IMAGE_FORMAT_NV_DST16;
-	else if (str::strcasecmp("NV_DST24", arg) == 0)
-		return IMAGE_FORMAT_NV_DST24;
-	else if (str::strcasecmp("NV_INTZ", arg) == 0)
-		return IMAGE_FORMAT_NV_INTZ;
-	else if (str::strcasecmp("NV_RAWZ", arg) == 0)
-		return IMAGE_FORMAT_NV_RAWZ;
-	else if (str::strcasecmp("ATI_DST16", arg) == 0)
-		return IMAGE_FORMAT_ATI_DST16;
-	else if (str::strcasecmp("ATI_DST24", arg) == 0)
-		return IMAGE_FORMAT_ATI_DST24;
 	else if (str::strcasecmp("NV_NULL", arg) == 0)
 		return IMAGE_FORMAT_NV_NULL;
 	else if (str::strcasecmp("ATI2N", arg) == 0)
 		return IMAGE_FORMAT_ATI2N;
 	else if (str::strcasecmp("ATI1N", arg) == 0)
 		return IMAGE_FORMAT_ATI1N;
+	else if (str::strcasecmp("BC7", arg) == 0)
+		return IMAGE_FORMAT_BC7;
 	else if (str::strcasecmp("COUNT", arg) == 0)
 		return IMAGE_FORMAT_COUNT;
 	else

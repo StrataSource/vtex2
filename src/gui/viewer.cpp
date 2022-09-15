@@ -468,6 +468,7 @@ static inline constexpr struct {
 	{IMAGE_FORMAT_RGBA32323232F, "RGBA32323232F"},
 	{IMAGE_FORMAT_ATI2N, "ATI2N"},
 	{IMAGE_FORMAT_ATI1N, "ATI1N"},
+	{IMAGE_FORMAT_BC7, "BC7"},
 };
 
 InfoWidget::InfoWidget(Document* doc, QWidget* pParent)

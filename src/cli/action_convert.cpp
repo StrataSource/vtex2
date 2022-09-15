@@ -94,6 +94,7 @@ const OptionList& ActionConvert::get_options() const {
 					"rgba32323232f",
 					"ati2n",
 					"ati1n",
+					"bc7",
 				})
 				.help("Image format of the VTF"));
 
@@ -253,8 +254,9 @@ bool ActionConvert::process_file(
 	std::filesystem::path outFile;
 	if (userOutputFile.empty()) {
 		outFile = srcFile.parent_path() / srcFile.filename().replace_extension(".vtf");
-	} else {
-		outFile = srcFile.parent_path()  / userOutputFile;
+	}
+	else {
+		outFile = srcFile.parent_path() / userOutputFile;
 	}
 
 	auto format = ImageFormatFromUserString(formatStr.c_str());
