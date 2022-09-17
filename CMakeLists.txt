@@ -76,3 +76,10 @@ if (BUILD_GUI)
 	target_link_libraries(vtfview PRIVATE Qt5::Widgets Qt5::Core Qt5::Gui Qt5::Svg)
 	target_include_directories(vtfview PRIVATE ${QT_INCLUDE} ${QT_INCLUDE}/QtWidgets ${QT_INCLUDE}/QtGui ${QT_INCLUDE}/QtCore)
 endif ()
+
+include(GNUInstallDirs)
+install(TARGETS vtex2)
+
+if (BUILD_GUI)
+	install(TARGETS vtfview)
+endif()
