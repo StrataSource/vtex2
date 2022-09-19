@@ -3,9 +3,12 @@ name: Build
 on:
   push:
 
+env:
+  QT_VERSION: '6.4.1'
+
 jobs:
   build-linux:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-20.04
 
     steps:
     - uses: actions/checkout@v3
@@ -13,19 +16,41 @@ jobs:
     - name: submodules-init
       uses: snickerbockers/submodules-init@v4
 
-    - name: Install dependencies
+    - name: Install Qt6
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{env.QT_VERSION}}
+        archives: 'qtbase qtsvg'
+
+    - name: Hack together libicu
       run: |
-       sudo apt-get update
-       sudo apt-get install -y qtbase5-dev libqt5svg5-dev
+        wget https://github.com/unicode-org/icu/releases/download/release-56-1/icu4c-56_1-RHEL6-x64.tgz
+        tar -xvf icu4c-56_1-RHEL6-x64.tgz
 
     - name: Generate
       working-directory: ${{github.workspace}}
-      run: cmake . -B ./build
+      run: cmake . -DCMAKE_BUILD_TYPE=Release -DQT_BASEDIR=$Qt6_DIR -B ./build
     
     - name: Build
       working-directory: ${{github.workspace}}
-      run: cmake --build ./build
+      run: |
+        export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$PWD/usr/local/lib"
+        echo $LD_LIBRARY_PATH
+        cmake --build ./build
+    
+    - name: Package Artifacts
+      run: |
+       cd build
+       zip ../vtex2.linux-amd64.zip vtex2 vtfview
 
+    - name: Upload a Build Artifact
+      uses: actions/upload-artifact@v2.2.2
+      with:
+        name: vtex2.linux-amd64
+        path: vtex2.linux-amd64.zip
+        if-no-files-found: warn
+
+  # Windows build + artifact upload
   build-windows:
     runs-on: windows-latest
     strategy:
@@ -41,26 +66,83 @@ jobs:
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v1
 
-    - name: Install Qt
-      uses: jurplel/install-qt-action@v2
+    - name: Install Qt6
+      uses: jurplel/install-qt-action@v3
+      with:
+        version: ${{env.QT_VERSION}}
+        archives: 'qtbase qtsvg'
 
     - name: Generate Solution
       working-directory: ${{github.workspace}}
-      run: cmake . -G "Visual Studio 17 2022" -DQT_BASEDIR=$Qt5_DIR -B build
+      run: cmake . -G "Visual Studio 17 2022" -DQT_BASEDIR=$Qt6_DIR -B build
 
     - name: Build
       working-directory: ${{env.GITHUB_WORKSPACE}}
       run: msbuild /m /p:Configuration=${{matrix.build_config}} build\vtex2.sln
 
+    - name: Package Artifacts
+      run: |
+       Get-ChildItem -Path build\Release\vtex2.exe, build\Release\vtfview.exe | Compress-Archive -DestinationPath vtex2.windows-amd64.zip
+
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v2.2.2
       with:
-        # Artifact name
-        name: artifact
-        # A file, directory or wildcard pattern that describes what to upload
-        path: out/
-        # The desired behavior if no files are found using the provided path.
- 
+        name: vtex2.windows-amd64
+        path: vtex2.windows-amd64.zip
         if-no-files-found: warn
-        # Duration after which artifact will expire in days. 0 means using default retention.
-        retention-days: 4
+
+  # Release draft + artifact upload
+  draft-release:
+    needs: [build-windows, build-linux]
+    runs-on: ubuntu-latest
+    if: github.ref_name == 'main'
+    steps:
+
+    # Get the artifacts from previous stages 
+    - uses: actions/download-artifact@master
+      with:
+       name: vtex2.windows-amd64
+
+    - uses: actions/download-artifact@master
+      with:
+       name: vtex2.linux-amd64
+
+    - run: ls -R
+    
+    - name: Store SHA
+      run: echo "GH_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+    # Draft a release
+    - name: Draft Release
+      uses: actions/create-release@v1
+      id: create_release
+      with:
+        draft: true
+        prerelease: true
+        release_name: vtex2 - ${{github.sha}}
+        tag_name: ${{github.ref}}
+      env:
+        GITHUB_TOKEN: ${{github.token}}
+
+    # Upload the linux artifacts
+    - name: Upload Linux Artifacts
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{github.token}}
+      with:
+        upload_url: ${{steps.create_release.outputs.upload_url}}
+        asset_path: ./vtex2.linux-amd64.zip
+        asset_name: vtex2.linux-amd64.zip
+        asset_content_type: application/zip
+
+    # Upload the windows artifacts
+    - name: Upload Windows Artifacts
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{github.token}}
+      with:
+        upload_url: ${{steps.create_release.outputs.upload_url}}
+        asset_path: ./vtex2.windows-amd64.zip
+        asset_name: vtex2.windows-amd64.zip
+        asset_content_type: application/zip
+
