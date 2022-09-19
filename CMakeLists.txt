@@ -74,8 +74,8 @@ if (BUILD_GUI)
 	target_link_libraries(vtfview PRIVATE vtflib_static libcom fmt::fmt)
 	target_include_directories(vtfview PRIVATE src external)
 
-	find_package(Qt5 REQUIRED COMPONENTS Widgets Core Gui Svg)
-	target_link_libraries(vtfview PRIVATE Qt5::Widgets Qt5::Core Qt5::Gui Qt5::Svg)
+	find_package(Qt6 REQUIRED COMPONENTS Widgets Core Gui Svg)
+	target_link_libraries(vtfview PRIVATE Qt6::Widgets Qt6::Core Qt6::Gui Qt6::Svg)
 	target_include_directories(vtfview PRIVATE ${QT_INCLUDE} ${QT_INCLUDE}/QtWidgets ${QT_INCLUDE}/QtGui ${QT_INCLUDE}/QtCore)
 endif ()
 
