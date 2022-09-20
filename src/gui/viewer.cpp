@@ -149,14 +149,14 @@ void ViewerMainWindow::setup_ui() {
 		});
 
 	shortcuts_[Actions::ZoomIn] = new QShortcut(
-		QKeySequence(Qt::CTRL + Qt::Key_Plus), this,
+		QKeySequence(Qt::CTRL | Qt::Key_Plus), this,
 		[this]
 		{
 			this->viewer_->zoomIn();
 		});
 
 	shortcuts_[Actions::ZoomOut] = new QShortcut(
-		QKeySequence(Qt::CTRL + Qt::Key_Minus), this,
+		QKeySequence(Qt::CTRL | Qt::Key_Minus), this,
 		[this]
 		{
 			this->viewer_->zoomOut();
@@ -872,7 +872,7 @@ void ImageSettingsWidget::set_vtf(VTFLib::CVTFFile* file) {
 	face_->setValue(0);
 
 	// Configure ranges
-	mip_->setRange(0, file->GetMipmapCount());
+	mip_->setRange(1, file->GetMipmapCount());
 	frame_->setRange(1, file->GetFrameCount());
 	face_->setRange(1, file->GetFaceCount());
 	startFrame_->setRange(1, file->GetFrameCount());
