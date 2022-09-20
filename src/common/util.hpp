@@ -64,4 +64,10 @@ namespace util
 	constexpr std::size_t ArraySize(T (&arr)[N]) {
 		return N;
 	}
+	
+	template<typename A, typename B, typename C>
+	A clamp(const A& value, const B& min, const C& max) {
+		return (value < min ? min :
+				(value > max ? max : value));
+	}
 } // namespace util

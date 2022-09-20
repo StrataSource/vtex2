@@ -1,3 +1,4 @@
+#pragma once
 
 #include <QMainWindow>
 #include <QWidget>
@@ -12,8 +13,7 @@
 #include "VTFLib.h"
 
 #include "document.hpp"
-
-#pragma once
+#include "common/util.hpp"
 
 class QSpinBox;
 class QCheckBox;
@@ -132,15 +132,20 @@ namespace vtfview
 		void paintEvent(QPaintEvent* event) override;
 
 		void set_frame(int f) {
-			frame_ = f;
+			frame_ = util::clamp(f, 1, file_ ? file_->GetFrameCount() : 1);
 			repaint();
 		}
+		
 		void set_face(int f) {
-			face_ = f;
+			face_ = util::clamp(f, 1, file_ ? file_->GetFaceCount() : 1);
 			repaint();
 		}
+		
+		// Sets the current mip
+		// This is in the range 1-mipcount, in vtflib it's 0-based index
 		void set_mip(int f) {
-			mip_ = f;
+			mip_ = util::clamp(f, 1, file_ ? file_->GetMipmapCount() : 1);
+			mip_ -= 1;
 			repaint();
 		}
 
