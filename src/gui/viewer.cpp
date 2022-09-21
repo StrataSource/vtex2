@@ -413,7 +413,7 @@ void ViewerMainWindow::import_file() {
 
 	auto file = new CVTFFile();
 
-	file->Create(data.info.w, data.info.h, 1, 1, 1, imglib::get_vtf_format(data.info));
+	file->Init(data.info.w, data.info.h, 1, 1, 1, imglib::get_vtf_format(data.info));
 	file->SetData(1, 1, 1, 0, (vlByte*)data.data);
 
 	document()->load_file(file);

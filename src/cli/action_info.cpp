@@ -55,9 +55,9 @@ const OptionList& ActionInfo::get_options() const {
 
 int ActionInfo::exec(const OptionList& opts) {
 
-	const auto file = opts.get(opts::file).get<std::string>();
-	const auto details = opts.get(opts::all).get<bool>();
-	const auto resources = opts.get(opts::resources).get<bool>() || details;
+	const auto file = opts.get<std::string>(opts::file);
+	const auto details = opts.get<bool>(opts::all);
+	const auto resources = opts.get<bool>(opts::resources) || details;
 
 	// Load off disk
 	std::uint8_t* buf = nullptr;

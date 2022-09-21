@@ -87,9 +87,9 @@ const OptionList& ActionExtract::get_options() const {
 
 int ActionExtract::exec(const OptionList& opts) {
 
-	std::filesystem::path file = opts.get(opts::file).get<std::string>();
-	std::filesystem::path output = opts.get(opts::output).get<std::string>();
-	const bool recursive = opts.get(opts::recursive).get<bool>();
+	std::filesystem::path file = opts.get<std::string>(opts::file);
+	std::filesystem::path output = opts.get<std::string>(opts::output);
+	const bool recursive = opts.get<bool>(opts::recursive);
 
 	if (std::filesystem::is_directory(file)) {
 		if (recursive) {
@@ -128,9 +128,9 @@ bool ActionExtract::extract_file(
 	if (!load_vtf(vtfPath))
 		return false;
 
-	auto format = opts.get(opts::format).get<std::string>();
-	auto mip = opts.get(opts::mip).get<int>();
-	const bool noalpha = opts.get(opts::noalpha).get<bool>();
+	auto format = opts.get<std::string>(opts::format);
+	auto mip = opts.get<int>(opts::mip);
+	const bool noalpha = opts.get<bool>(opts::noalpha);
 
 	// If the user provided output file is empty, we'll determine a default
 	auto outFile = userOutputFile;
