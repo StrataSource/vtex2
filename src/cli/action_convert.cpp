@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <functional>
 #include <iostream>
+#include <algorithm>
 
 #include "fmt/format.h"
 #include "VTFLib.h"
@@ -17,6 +18,10 @@
 #include "common/enums.hpp"
 #include "common/image.hpp"
 #include "common/util.hpp"
+
+// Windows garbage!!
+#undef min
+#undef max
 
 using namespace VTFLib;
 using namespace vtex2;
@@ -287,7 +292,7 @@ bool ActionConvert::process_file(
 	// We will choose the best format to operate on here. This simplifies later code and lets us avoid extraneous
 	// conversions
 	auto formatInfo = CVTFFile::GetImageFormatInfo(format);
-	const auto procFormat = [formatInfo]()
+	const auto procFormat = [formatInfo]() -> VTFImageFormat
 	{
 		auto maxBpp = std::max(
 			std::max(formatInfo.uiRedBitsPerPixel, formatInfo.uiGreenBitsPerPixel),
