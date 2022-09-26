@@ -135,12 +135,12 @@ namespace vtfview
 			frame_ = util::clamp(f, 1, file_ ? file_->GetFrameCount() : 1);
 			repaint();
 		}
-		
+
 		void set_face(int f) {
 			face_ = util::clamp(f, 1, file_ ? file_->GetFaceCount() : 1);
 			repaint();
 		}
-		
+
 		// Sets the current mip
 		// This is in the range 1-mipcount, in vtflib it's 0-based index
 		void set_mip(int f) {

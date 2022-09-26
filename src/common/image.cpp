@@ -132,10 +132,10 @@ bool imglib::image_save(const ImageData_t& data, const char* file, FileFormat fo
 bool imglib::resize(ImageData_t& data, int newW, int newH) {
 	void* newData = nullptr;
 	bool ret = resize(data.data, &newData, data.info.type, data.info.comps, data.info.w, data.info.h, newW, newH);
-	
+
 	if (!ret)
 		return false;
-	
+
 	// Free old data
 	free(data.data);
 	data.data = newData;
@@ -144,45 +144,52 @@ bool imglib::resize(ImageData_t& data, int newW, int newH) {
 	return true;
 }
 
-bool imglib::resize(void* indata, void** useroutdata, ChannelType srcType, int comps, int w, int h, int newW, int newH) {
+bool imglib::resize(
+	void* indata, void** useroutdata, ChannelType srcType, int comps, int w, int h, int newW, int newH) {
 	stbir_datatype type;
-	switch(srcType) {
-		case Float: type = STBIR_TYPE_FLOAT; break;
-		case UInt16: type = STBIR_TYPE_UINT16; break;
-		default: type = STBIR_TYPE_UINT8; break;
+	switch (srcType) {
+		case Float:
+			type = STBIR_TYPE_FLOAT;
+			break;
+		case UInt16:
+			type = STBIR_TYPE_UINT16;
+			break;
+		default:
+			type = STBIR_TYPE_UINT8;
+			break;
 	}
-	
+
 	void* outdata = malloc(bytes_for_image(newW, newH, srcType, comps));
-	
-	int ret = stbir_resize(indata, w, h, 0, 
-						outdata, newW, newH, 0,
-						type, comps, comps > 3,
-						STBIR_FLAG_ALPHA_PREMULTIPLIED,
-						STBIR_EDGE_CLAMP, STBIR_EDGE_CLAMP, STBIR_FILTER_DEFAULT, STBIR_FILTER_DEFAULT,
-						STBIR_COLORSPACE_LINEAR, nullptr);
+
+	int ret = stbir_resize(
+		indata, w, h, 0, outdata, newW, newH, 0, type, comps, comps > 3, STBIR_FLAG_ALPHA_PREMULTIPLIED,
+		STBIR_EDGE_CLAMP, STBIR_EDGE_CLAMP, STBIR_FILTER_DEFAULT, STBIR_FILTER_DEFAULT, STBIR_COLORSPACE_LINEAR,
+		nullptr);
 	// Error :(
 	if (!ret) {
 		free(outdata);
 		return false;
 	}
-	
+
 	*useroutdata = outdata;
 	return true;
 }
 
 size_t imglib::bytes_for_image(int w, int h, ChannelType type, int comps) {
 	int bpc = 1;
-	switch(type) {
-	case ChannelType::Float:
-		bpc = 4; break;
-	case ChannelType::UInt16:
-		bpc = 2; break;
-	default:
-		bpc = 1; break;
+	switch (type) {
+		case ChannelType::Float:
+			bpc = 4;
+			break;
+		case ChannelType::UInt16:
+			bpc = 2;
+			break;
+		default:
+			bpc = 1;
+			break;
 	}
 	return w * h * comps * bpc;
 }
-
 
 bool imglib::convert_formats(
 	const void* srcData, void* dstData, ChannelType srcChanType, ChannelType dstChanType, int comps, int w, int h) {

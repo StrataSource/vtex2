@@ -103,12 +103,12 @@ namespace imglib
 	 * for the specified image file type
 	 */
 	const char* image_get_extension(FileFormat format);
-	
+
 	/**
 	 * Resizes an image in place
 	 */
 	bool resize(ImageData_t& data, int newW, int newH);
-	
+
 	/**
 	 * Resize an image
 	 * Variant for non-imglib data

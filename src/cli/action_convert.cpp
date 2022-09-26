@@ -187,7 +187,7 @@ const OptionList& ActionConvert::get_options() const {
 				.value(0)
 				.choices({"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"})
 				.help("DEFLATE compression level to use. 0=none, 9=max. This will force VTF version to 7.6"));
-				
+
 		opts::width = opts.add(
 			ActionOption()
 				.short_opt("-w")
@@ -195,7 +195,7 @@ const OptionList& ActionConvert::get_options() const {
 				.type(OptType::Int)
 				.value(-1)
 				.help("Width of the output VTF"));
-				
+
 		opts::height = opts.add(
 			ActionOption()
 				.short_opt("-h")
@@ -203,7 +203,7 @@ const OptionList& ActionConvert::get_options() const {
 				.type(OptType::Int)
 				.value(-1)
 				.help("Height of the output VTF"));
-				
+
 		opts::nomips = opts.add(
 			ActionOption()
 				.long_opt("--no-mips")
@@ -263,13 +263,13 @@ bool ActionConvert::process_file(
 	auto srgb = opts.get<bool>(opts::srgb);
 	auto thumbnail = opts.get<bool>(opts::thumbnail);
 	auto verStr = opts.get<std::string>(opts::version);
-	
+
 	auto nomips = opts.get<bool>(opts::nomips);
 	this->m_mips = nomips ? 1 : std::max(opts.get<int>(opts::mips), 1);
-	
+
 	m_width = opts.get<int>(opts::width);
 	m_height = opts.get<int>(opts::height);
-	
+
 	bool isvtf = srcFile.filename().extension() == ".vtf";
 
 	// If an out file name is not provided, we need to build our own
@@ -284,11 +284,13 @@ bool ActionConvert::process_file(
 	auto format = ImageFormatFromUserString(formatStr.c_str());
 	auto vtfFile = std::make_unique<CVTFFile>();
 
-	// We will choose the best format to operate on here. This simplifies later code and lets us avoid extraneous conversions
+	// We will choose the best format to operate on here. This simplifies later code and lets us avoid extraneous
+	// conversions
 	auto formatInfo = CVTFFile::GetImageFormatInfo(format);
 	const auto procFormat = [formatInfo]()
 	{
-		auto maxBpp = std::max(std::max(formatInfo.uiRedBitsPerPixel, formatInfo.uiGreenBitsPerPixel),
+		auto maxBpp = std::max(
+			std::max(formatInfo.uiRedBitsPerPixel, formatInfo.uiGreenBitsPerPixel),
 			std::max(formatInfo.uiBlueBitsPerPixel, formatInfo.uiAlphaBitsPerPixel));
 		if (maxBpp > 16)
 			return IMAGE_FORMAT_RGBA32323232F;
@@ -317,7 +319,7 @@ bool ActionConvert::process_file(
 		delete srcVtf;
 	}
 	// Add standard image data
-	else if(!add_image_data(srcFile, vtfFile.get(), procFormat, true)) {
+	else if (!add_image_data(srcFile, vtfFile.get(), procFormat, true)) {
 		return false;
 	}
 
@@ -338,21 +340,22 @@ bool ActionConvert::process_file(
 		std::cerr << fmt::format("Could not convert image data to {}\n", formatStr);
 		return false;
 	}
-	
+
 	// Save to disk finally
 	if (!vtfFile->Save(outFile.string().c_str())) {
 		std::cerr << fmt::format("Could not save file {}: {}\n", outFile.string(), vlGetLastError());
 		return false;
 	}
-	
+
 	// Report file sizes
 	if (initialSize != 0) {
-		fmt::print("{} ({} bytes) -> {} ({} bytes)\n", srcFile.string(), initialSize, outFile.string(), vtfFile->GetSize());	
+		fmt::print(
+			"{} ({} bytes) -> {} ({} bytes)\n", srcFile.string(), initialSize, outFile.string(), vtfFile->GetSize());
 	}
 	else {
 		fmt::print("{} -> {} ({} bytes)\n", srcFile.string(), outFile.string(), vtfFile->GetSize());
 	}
-	
+
 	return true;
 }
 
@@ -361,7 +364,8 @@ bool ActionConvert::process_file(
 // and then returns the newly loaded file
 // If load failed, we'll return nullptr
 //
-VTFLib::CVTFFile* ActionConvert::init_from_file(const std::filesystem::path& src, VTFLib::CVTFFile* file, VTFImageFormat newFormat) {
+VTFLib::CVTFFile*
+ActionConvert::init_from_file(const std::filesystem::path& src, VTFLib::CVTFFile* file, VTFImageFormat newFormat) {
 	auto srcFile = new CVTFFile();
 	if (!srcFile->Load(src.string().c_str(), false))
 		return nullptr;
@@ -377,8 +381,9 @@ VTFLib::CVTFFile* ActionConvert::init_from_file(const std::filesystem::path& src
 	const auto height = (m_height == -1) ? srcFile->GetHeight() : m_height;
 
 	// Init image with the desired parameters and processing format
-	file->Init(width, height, srcFile->GetFrameCount(), srcFile->GetFaceCount(),
-		srcFile->GetDepth(), newFormat, srcFile->GetHasThumbnail(), mipCount);
+	file->Init(
+		width, height, srcFile->GetFrameCount(), srcFile->GetFaceCount(), srcFile->GetDepth(), newFormat,
+		srcFile->GetHasThumbnail(), mipCount);
 
 	file->SetFlags(srcFile->GetFlags());
 	file->SetVersion(srcFile->GetMajorVersion(), srcFile->GetMinorVersion());
@@ -394,11 +399,11 @@ VTFLib::CVTFFile* ActionConvert::init_from_file(const std::filesystem::path& src
 //
 bool ActionConvert::set_properties(VTFLib::CVTFFile* vtfFile) {
 	auto compressionLevel = m_opts->get<int>(opts::compress);
-	
+
 	// Set version if provided, or if we need it specifically to be 7.6
 	if (m_opts->has(opts::version) || compressionLevel > 0 || vtfFile->GetFormat() == IMAGE_FORMAT_BC7) {
 		auto verStr = m_opts->get<std::string>(opts::version);
-		
+
 		int majorVer, minorVer;
 		if (!get_version_from_str(verStr, majorVer, minorVer)) {
 			std::cerr << fmt::format("Invalid version '{}'! Valid versions: 7.1, 7.2, 7.3, 7.4, 7.5, 7.6\n", verStr);
@@ -408,13 +413,13 @@ bool ActionConvert::set_properties(VTFLib::CVTFFile* vtfFile) {
 		minorVer = (compressionLevel > 0) ? 6 : minorVer; // Force 7.6 if using DEFLATE
 		vtfFile->SetVersion(majorVer, minorVer);
 	}
-	
+
 	// Set the DEFLATE compression level
 	if (compressionLevel > 0 && !vtfFile->SetAuxCompressionLevel(compressionLevel)) {
 		std::cerr << fmt::format("Could not set compression level to {}!\n", compressionLevel);
 		return false;
 	}
-	
+
 	// These should be defaulted to off
 	// we're not going to set them explicitly to the value of the opts because we may have gotten them from another vtf
 	if (m_opts->get<bool>(opts::normal))
@@ -435,12 +440,12 @@ bool ActionConvert::set_properties(VTFLib::CVTFFile* vtfFile) {
 	// Same deal for the below issues- only override default if specified
 	if (m_opts->has(opts::startframe))
 		vtfFile->SetStartFrame(m_opts->get<int>(opts::startframe));
-	
+
 	vtfFile->ComputeReflectivity();
-	
+
 	if (m_opts->has(opts::bumpscale))
 		vtfFile->SetBumpmapScale(m_opts->get<float>(opts::bumpscale));
-	
+
 	return true;
 }
 
@@ -450,7 +455,7 @@ bool ActionConvert::set_properties(VTFLib::CVTFFile* vtfFile) {
 //
 bool ActionConvert::add_image_data(
 	const std::filesystem::path& imageSrc, VTFLib::CVTFFile* file, VTFImageFormat format, bool create) {
-		
+
 	auto image = imglib::image_begin(imageSrc);
 	if (!image)
 		return false;
@@ -466,7 +471,7 @@ bool ActionConvert::add_image_data(
 
 	if (!data.data)
 		return false;
-		
+
 	// If width and height are specified, resize in place
 	if (m_height != -1 && m_width != -1) {
 		if (!imglib::resize(data, m_width, m_height))
@@ -478,16 +483,16 @@ bool ActionConvert::add_image_data(
 	return add_image_data_raw(file, data.data, format, dataFormat, data.info.w, data.info.h, create);
 }
 
-// 
+//
 // Add image data from an existing VTF to the image
 //  imageSrc: Path to the existing VTF - This may be modified if resizing or if conversion is needed!!!
 //  file: Destination VTF
 //  format: Dest format of the data, file->GetFormat() will return this when this returns true
-// 
+//
 bool ActionConvert::add_vtf_image_data(CVTFFile* srcFile, VTFLib::CVTFFile* file, VTFImageFormat format) {
-	
+
 	const auto dstImageFmt = file->GetFormat();
-	
+
 	const auto frameCount = srcFile->GetFrameCount();
 	const auto faceCount = srcFile->GetFaceCount();
 	const auto sliceCount = srcFile->GetDepth();
@@ -496,13 +501,14 @@ bool ActionConvert::add_vtf_image_data(CVTFFile* srcFile, VTFLib::CVTFFile* file
 
 	assert(file->GetFormat() == format);
 	assert(srcFile->GetFormat() == format);
-	
+
 	// Resize VTF only if necessary (This is expensive and kinda crap)
 	if (m_width != -1 && m_height != -1 && (srcWidth != m_width || srcHeight != m_height)) {
-		
+
 		// Choose the best channel type for this
 		auto fmtinfo = file->GetImageFormatInfo(file->GetFormat());
-		auto maxBpp = std::max(std::max(fmtinfo.uiAlphaBitsPerPixel, fmtinfo.uiBlueBitsPerPixel), 
+		auto maxBpp = std::max(
+			std::max(fmtinfo.uiAlphaBitsPerPixel, fmtinfo.uiBlueBitsPerPixel),
 			std::max(fmtinfo.uiGreenBitsPerPixel, fmtinfo.uiRedBitsPerPixel));
 
 		// Choose the best image format type for this, so we dont lose image depth!
@@ -518,12 +524,9 @@ bool ActionConvert::add_vtf_image_data(CVTFFile* srcFile, VTFLib::CVTFFile* file
 		auto convBuffer = std::make_unique<vlByte[]>(convSize);
 
 		// Resize all base level mips for each frame, face and slice.
-		for(vlUInt uiFrame = 0; uiFrame < frameCount; ++uiFrame)
-		{
-			for(vlUInt uiFace = 0; uiFace < faceCount; ++uiFace)
-			{
-				for(vlUInt uiSlice = 0; uiSlice < sliceCount; ++uiSlice)
-				{
+		for (vlUInt uiFrame = 0; uiFrame < frameCount; ++uiFrame) {
+			for (vlUInt uiFace = 0; uiFace < faceCount; ++uiFace) {
+				for (vlUInt uiSlice = 0; uiSlice < sliceCount; ++uiSlice) {
 					// Get & resize the data now
 					void* data = srcFile->GetData(uiFrame, uiFace, uiSlice, 0);
 					void* newData = nullptr;
@@ -533,25 +536,21 @@ bool ActionConvert::add_vtf_image_data(CVTFFile* srcFile, VTFLib::CVTFFile* file
 
 					// Load the image data into the dest now
 					file->SetData(uiFrame, uiFace, uiSlice, 0, static_cast<vlByte*>(newData));
-					
+
 					free(newData);
 				}
 			}
 		}
-		
+
 		return true;
 	}
 	else {
 		// Load all image data normally
-		for(vlUInt uiFrame = 0; uiFrame < frameCount; ++uiFrame)
-		{
-			for(vlUInt uiFace = 0; uiFace < faceCount; ++uiFace)
-			{
-				for(vlUInt uiSlice = 0; uiSlice < sliceCount; ++uiSlice)
-				{
+		for (vlUInt uiFrame = 0; uiFrame < frameCount; ++uiFrame) {
+			for (vlUInt uiFace = 0; uiFace < faceCount; ++uiFace) {
+				for (vlUInt uiSlice = 0; uiSlice < sliceCount; ++uiSlice) {
 					// Load the data normally for once
-					file->SetData(uiFrame, uiFace, uiSlice, 0, 
-						srcFile->GetData(uiFrame, uiFace, uiSlice, 0));
+					file->SetData(uiFrame, uiFace, uiSlice, 0, srcFile->GetData(uiFrame, uiFace, uiSlice, 0));
 				}
 			}
 		}
@@ -564,9 +563,11 @@ bool ActionConvert::add_vtf_image_data(CVTFFile* srcFile, VTFLib::CVTFFile* file
 //  file is the vtf to add to
 //  format is the desired format of the VTF- If set to NONE, we'll use the data format
 //
-bool ActionConvert::add_image_data_raw(VTFLib::CVTFFile* file, const void* data, VTFImageFormat format, VTFImageFormat dataFormat, int w, int h, bool create) {
+bool ActionConvert::add_image_data_raw(
+	VTFLib::CVTFFile* file, const void* data, VTFImageFormat format, VTFImageFormat dataFormat, int w, int h,
+	bool create) {
 	vlByte* dest = nullptr;
-	
+
 	// Convert to requested format, if necessary
 	if (format != IMAGE_FORMAT_NONE && format != dataFormat) {
 
