@@ -98,7 +98,7 @@ namespace vtex2
 				return def;
 			return *a;
 		}
-		
+
 		bool provided() const {
 			return m_handled;
 		}
@@ -125,12 +125,12 @@ namespace vtex2
 		ActionOption& get(int index) {
 			return m_opts[index];
 		}
-		
+
 		bool has(int index) const {
 			return m_opts[index].provided();
 		}
-		
-		template<class T>
+
+		template <class T>
 		const T get(int index) const {
 			return m_opts[index].get<T>();
 		}
@@ -138,11 +138,11 @@ namespace vtex2
 		bool empty() const {
 			return m_opts.empty();
 		}
-		
+
 		const auto& opts() const {
 			return m_opts;
 		}
-		
+
 		auto& opts() {
 			return m_opts;
 		}

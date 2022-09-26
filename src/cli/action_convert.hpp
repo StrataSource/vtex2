@@ -30,15 +30,18 @@ namespace vtex2
 
 		bool process_file(
 			const OptionList& opts, const std::filesystem::path& srcFile, const std::filesystem::path& outPath);
-		
+
 		bool add_image_data(
 			const std::filesystem::path& imageSrc, VTFLib::CVTFFile* file, VTFImageFormat format, bool create);
-		
-		bool add_image_data_raw(VTFLib::CVTFFile* file, const void* data, VTFImageFormat format, VTFImageFormat dataFormat, int w, int h, bool create);
-		
+
+		bool add_image_data_raw(
+			VTFLib::CVTFFile* file, const void* data, VTFImageFormat format, VTFImageFormat dataFormat, int w, int h,
+			bool create);
+
 		bool add_vtf_image_data(VTFLib::CVTFFile* srcImage, VTFLib::CVTFFile* file, VTFImageFormat format);
-		
-		VTFLib::CVTFFile* init_from_file(const std::filesystem::path& src, VTFLib::CVTFFile* file, VTFImageFormat newFormat);
+
+		VTFLib::CVTFFile*
+		init_from_file(const std::filesystem::path& src, VTFLib::CVTFFile* file, VTFImageFormat newFormat);
 
 	private:
 		int m_mips = 10;
