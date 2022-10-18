@@ -1,6 +1,7 @@
 
 #include <iostream>
 #include <unordered_map>
+#include <algorithm>
 
 #include "action_pack.hpp"
 #include "common/util.hpp"
@@ -10,6 +11,10 @@
 #include "VTFLib.h"
 
 #include "fmt/format.h"
+
+// Fucking windows bullshit
+#undef min
+#undef max
 
 using namespace vtex2;
 using namespace VTFLib;
