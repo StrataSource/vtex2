@@ -20,7 +20,7 @@ FILE* imglib::image_begin(const char* filePath) {
 }
 
 ImageInfo_t imglib::image_info(FILE* fp) {
-	ImageInfo_t info;
+	ImageInfo_t info {};
 	stbi_info_from_file(fp, &info.w, &info.h, &info.comps);
 	info.frames = 1; // @TODO: animated image support
 
@@ -30,7 +30,7 @@ ImageInfo_t imglib::image_info(FILE* fp) {
 	else if (stbi_is_hdr_from_file(fp))
 		info.type = ChannelType::Float;
 	else
-		info.type == ChannelType::UInt8;
+		info.type = ChannelType::UInt8;
 
 	return info;
 }
