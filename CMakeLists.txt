@@ -26,7 +26,8 @@ add_definitions(-DVTFLIB_STATIC=1)
 ##############################
 set(COMMON_SRC
 		src/common/image.cpp
-		src/common/enums.cpp)
+		src/common/enums.cpp
+		src/common/pack.cpp)
 
 add_library(libcom STATIC ${COMMON_SRC})
 
@@ -39,7 +40,8 @@ set(CLI_SRC
 		src/cli/main.cpp
 		src/cli/action_extract.cpp
 		src/cli/action_info.cpp
-		src/cli/action_convert.cpp)
+		src/cli/action_convert.cpp
+		src/cli/action_pack.cpp)
 
 add_executable(vtex2 ${CLI_SRC})
 

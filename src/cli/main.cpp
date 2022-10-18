@@ -11,6 +11,7 @@
 #include "action_info.hpp"
 #include "action_extract.hpp"
 #include "action_convert.hpp"
+#include "action_pack.hpp"
 #include "common/util.hpp"
 
 using namespace vtex2;
@@ -22,7 +23,12 @@ namespace vtex2
 }
 
 // Global list of actions
-static BaseAction* s_actions[] = {new ActionInfo(), new ActionExtract(), new ActionConvert()};
+static BaseAction* s_actions[] = {
+	new ActionInfo(),
+	new ActionExtract(),
+	new ActionConvert(),
+	new ActionPack()
+};
 
 static bool handle_option(int argc, int& argIndex, char** argv, ActionOption& opt);
 static bool arg_compare(const char* arg, const char* argname);
@@ -153,7 +159,7 @@ static bool split_arg(const char* arg, std::string& value) {
 		// Unquoted equal!!!
 		if (*s == '=') {
 			// Extract portion following =
-			char comp2[256];
+			char comp2[8192];
 			std::strncpy(comp2, s + 1, sizeof(comp2));
 			comp2[sizeof(comp2) - 1] = 0;
 			value = comp2;

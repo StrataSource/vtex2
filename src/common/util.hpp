@@ -69,4 +69,10 @@ namespace util
 	A clamp(const A& value, const B& min, const C& max) {
 		return (value < min ? min : (value > max ? max : value));
 	}
+
+	static std::string& tolower(std::string& str) {
+		for (int i = 0; i < str.size(); ++i)
+			str[i] = std::tolower(str[i]);
+		return str;
+	}
 } // namespace util
