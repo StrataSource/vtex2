@@ -115,7 +115,24 @@ namespace imglib
 	 */
 	bool resize(void* data, void** outData, ChannelType type, int comps, int w, int h, int newW, int newH);
 
+	/**
+	 * Return the number of bytes needed for the specified image
+	 */
 	size_t bytes_for_image(int w, int h, ChannelType type, int comps);
+
+	/**
+	 * Apply processing effects to the image
+	 * Right now this only handles GL -> DX transforms, but more processing flags may be added in the future
+	 * Ideally all processing will be done in one go
+	 */
+	using ProcFlags = uint32_t;
+	inline constexpr ProcFlags PROC_GL_TO_DX_NORM = (1<<0);
+
+	bool process_image(void* data, ChannelType type, int comps, int w, int h, ProcFlags flags);
+	inline bool process_image(ImageData_t& data, ProcFlags flags) {
+		return process_image(data.data, data.info.type, data.info.comps, data.info.w, data.info.h, flags);
+	} 
+
 
 	/**
 	 * Color conversion routines
@@ -126,21 +143,56 @@ namespace imglib
 
 	bool convert_formats(
 		const void* srcData, void* dstData, ChannelType srcChanType, ChannelType dstChanType, int comps, int w, int h);
+	bool convert(ImageData_t& data, ChannelType dstChanType);
 
-	void convert_rgb16_rgb8(const void* rgb16, void* rgb8, int w, int h);
-	void convert_rgba16_rgba8(const void* rgba16, void* rgba8, int w, int h);
-	void convert_rgb32_rgb8(const void* rgb32, void* rgb8, int w, int h);
-	void convert_rgba32_rgba8(const void* rgba32, void* rgba8, int w, int h);
+	template<int COMPS>
+	void convert_16_to_8(const void* rgb16, void* rgb8, int w, int h) {
+		const uint16_t* src = static_cast<const uint16_t*>(rgb16);
+		uint8_t* dst = static_cast<uint8_t*>(rgb8);
+		for (int i = 0; i < w * h * COMPS; ++i)
+			dst[i] = src[i] * (255.f / 65535.f);
+	}
 
-	void convert_rgb8_rgb32(const void* rgb8, void* rgb32, int w, int h);
-	void convert_rgba8_rgba32(const void* rgba8, void* rgba32, int w, int h);
-	void convert_rgb16_rgb32(const void* rgb16, void* rgb32, int w, int h);
-	void convert_rgba16_rgba32(const void* rgba16, void* rgba32, int w, int h);
+	template<int COMPS>
+	void convert_32_to_8(const void* rgb32, void* rgb8, int w, int h) {
+		const float* src = static_cast<const float*>(rgb32);
+		uint8_t* dst = static_cast<uint8_t*>(rgb8);
+		for (int i = 0; i < w * h * COMPS; ++i)
+			dst[i] = src[i] * (255.f);
+	}
 
-	void convert_rgb32_rgb16(const void* rgb32, void* rgb16, int w, int h);
-	void convert_rgba32_rgba16(const void* rgba32, void* rgba16, int w, int h);
-	void convert_rgb8_rgb16(const void* rgb8, void* rgb16, int w, int h);
-	void convert_rgba8_rgba16(const void* rgba8, void* rgba16, int w, int h);
+	template<int COMPS>
+	void convert_8_to_32(const void* rgb8, void* rgb32, int w, int h) {
+		const uint8_t* src = static_cast<const uint8_t*>(rgb8);
+		float* dst = static_cast<float*>(rgb32);
+		for (int i = 0; i < w * h * COMPS; ++i)
+			dst[i] = src[i] / (255.f);
+	}
+
+	template<int COMPS>
+	void convert_16_to_32(const void* rgb16, void* rgb32, int w, int h) {
+		const uint16_t* src = static_cast<const uint16_t*>(rgb16);
+		float* dst = static_cast<float*>(rgb32);
+		for (int i = 0; i < w * h * COMPS; ++i)
+			dst[i] = src[i] / (65535.f);
+	}
+
+	template<int COMPS>
+	void convert_32_to_16(const void* rgb32, void* rgb16, int w, int h) {
+		const float* src = static_cast<const float*>(rgb32);
+		uint16_t* dst = static_cast<uint16_t*>(rgb16);
+		for (int i = 0; i < w * h * COMPS; ++i)
+			dst[i] = src[i] * 65535.f;
+	}
+
+	template<int COMPS>
+	void convert_8_to_16(const void* rgb8, void* rgb16, int w, int h) {
+		auto* src = static_cast<const uint8_t*>(rgb8);
+		auto* dst = static_cast<uint16_t*>(rgb16);
+		for (int i = 0; i < w * h * COMPS; ++i)
+			dst[i] = src[i] * (65535.f / 255.f);
+	}
+
 
 	/**
 	 * Get a compatible VTF image format for the image data

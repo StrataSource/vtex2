@@ -38,6 +38,7 @@ ImageInfo_t imglib::image_info(FILE* fp) {
 ImageData_t imglib::image_load(FILE* fp) {
 	auto info = image_info(fp);
 	ImageData_t data{};
+	data.info = info;
 	data.info.frames = 1;
 	if (info.type == ChannelType::Float) {
 		data.data = stbi_loadf_from_file(fp, &data.info.w, &data.info.h, &data.info.comps, info.comps);
@@ -52,6 +53,8 @@ ImageData_t imglib::image_load(FILE* fp) {
 }
 
 void imglib::image_free(ImageData_t& data) {
+	if (!data.data)
+		return;
 	free(data.data);
 	data.data = nullptr;
 }
@@ -191,182 +194,98 @@ size_t imglib::bytes_for_image(int w, int h, ChannelType type, int comps) {
 	return w * h * comps * bpc;
 }
 
+template<int COMPS>
+bool convert_formats_internal(const void* srcData, void* dstData, ChannelType srcChanType, ChannelType dstChanType, int w, int h) {
+	static_assert(COMPS > 0 && COMPS <= 4, "Comps is out of range");
+
+	if (srcChanType == UInt8) {
+		// RGBX32
+		if (dstChanType == Float)
+			convert_8_to_32<COMPS>(srcData, dstData, w, h);
+		// RGBX16
+		else if (dstChanType == UInt16)
+			convert_8_to_16<COMPS>(srcData, dstData, w, h);
+		return true;
+	}
+	// RGBX32 -> RGBX[8|16]
+	else if (srcChanType == Float) {
+		// RGBX16
+		if (dstChanType == UInt16)
+			convert_32_to_16<COMPS>(srcData, dstData, w, h);
+		// RGBX8
+		else if (dstChanType == UInt8)
+			convert_32_to_8<COMPS>(srcData, dstData, w, h);
+		return true;
+	}
+	// RGBX16
+	else if (srcChanType == UInt16) {
+		if (dstChanType == UInt8)
+			convert_16_to_8<COMPS>(srcData, dstData, w, h);
+		else if (dstChanType == Float)
+			convert_16_to_32<COMPS>(srcData, dstData, w, h);
+		return true;
+	}
+
+	return false;
+}
+
 bool imglib::convert_formats(
 	const void* srcData, void* dstData, ChannelType srcChanType, ChannelType dstChanType, int comps, int w, int h) {
 	// No conv needed
 	if (srcChanType == dstChanType)
 		return true;
 
-	if (srcChanType == UInt8) {
-		// RGBX32
-		if (dstChanType == Float) {
-			if (comps == 3) {
-				convert_rgb8_rgb32(srcData, dstData, w, h);
-				return true;
-			}
-			else if (comps == 4) {
-				convert_rgba8_rgba32(srcData, dstData, w, h);
-				return true;
-			}
-			else [[unlikely]]
-				return false;
-		}
-		// RGBX16
-		if (dstChanType == UInt16) {
-			if (comps == 3) {
-				convert_rgb8_rgb16(srcData, dstData, w, h);
-				return true;
-			}
-			else if (comps == 4) {
-				convert_rgba8_rgba16(srcData, dstData, w, h);
-				return true;
-			}
-			else [[unlikely]]
-				return false;
-		}
-	}
-	// RGBX32 -> RGBX[8|16]
-	else if (srcChanType == Float) {
-		// RGBX16
-		if (dstChanType == UInt16) {
-			if (comps == 3) {
-				convert_rgb32_rgb16(srcData, dstData, w, h);
-				return true;
-			}
-			else if (comps == 4) {
-				convert_rgba32_rgba16(srcData, dstData, w, h);
-				return true;
-			}
-			else [[unlikely]]
-				return false;
-		}
-		// RGBX8
-		else if (dstChanType == UInt8) {
-			if (comps == 3) {
-				convert_rgb32_rgb8(srcData, dstData, w, h);
-				return true;
-			}
-			else if (comps == 4) {
-				convert_rgba32_rgba8(srcData, dstData, w, h);
-				return true;
-			}
-			else [[unlikely]]
-				return false;
-		}
-	}
-	// RGBX16
-	else if (srcChanType == UInt16) {
-		if (dstChanType == UInt8) {
-			if (comps == 3) {
-				convert_rgb16_rgb8(srcData, dstData, w, h);
-				return true;
-			}
-			else if (comps == 4) {
-				convert_rgba16_rgba8(srcData, dstData, w, h);
-				return true;
-			}
-			else [[unlikely]]
-				return false;
-		}
-		else if (dstChanType == Float) {
-			if (comps == 3) {
-				convert_rgb16_rgb32(srcData, dstData, w, h);
-				return true;
-			}
-			else if (comps == 4) {
-				convert_rgba16_rgba32(srcData, dstData, w, h);
-				return true;
-			}
-			else [[unlikely]]
-				return false;
-		}
-	}
-
+	if (comps == 4)
+		return convert_formats_internal<4>(srcData, dstData, srcChanType, dstChanType, w, h);
+	else if (comps == 3)
+		return convert_formats_internal<3>(srcData, dstData, srcChanType, dstChanType, w, h);
+	else if (comps == 2)
+		return convert_formats_internal<2>(srcData, dstData, srcChanType, dstChanType, w, h);
+	else if (comps == 1)
+		return convert_formats_internal<1>(srcData, dstData, srcChanType, dstChanType, w, h);
 	return false;
 }
 
-void imglib::convert_rgb16_rgb8(const void* rgb16, void* rgb8, int w, int h) {
-	const uint16_t* src = static_cast<const uint16_t*>(rgb16);
-	uint8_t* dst = static_cast<uint8_t*>(rgb8);
-	for (int i = 0; i < w * h * 3; ++i)
-		dst[i] = src[i] * (255.f / 65535.f);
+bool imglib::convert(ImageData_t& data, ChannelType dstChanType) {
+	void* dst = malloc(imglib::bytes_for_image(data.info.w, data.info.h, data.info.type, data.info.comps));
+
+	if (!convert_formats(data.data, dst, data.info.type, dstChanType, data.info.comps, data.info.w, data.info.h)) {
+		free(dst);
+		return false;
+	}
+
+	free(data.data);
+	data.data = dst;
+	return true;
 }
 
-void imglib::convert_rgba16_rgba8(const void* rgba16, void* rgba8, int w, int h) {
-	const uint16_t* src = static_cast<const uint16_t*>(rgba16);
-	uint8_t* dst = static_cast<uint8_t*>(rgba8);
-	for (int i = 0; i < w * h * 4; ++i)
-		dst[i] = src[i] * (255.f / 65535.f);
+template<typename T>
+static T fullval() = delete;
+template<> float fullval<float>() { return 1.0f; }
+template<> uint16_t fullval<uint16_t>() { return 65535; }
+template<> uint8_t fullval<uint8_t>() { return 255; }
+
+template<class T>
+static bool process_image_internal(void* indata, int comps, int w, int h, ProcFlags flags) {
+	T* data = static_cast<T*>(indata);
+	for (int i = 0; i < w * h * comps; i += comps) {
+		T* cur = data + i;
+		if (flags & PROC_GL_TO_DX_NORM)
+			cur[1] = fullval<T>()-cur[1]; // Invert green channel
+	}
+	return true;
 }
 
-void imglib::convert_rgb32_rgb8(const void* rgb32, void* rgb8, int w, int h) {
-	const float* src = static_cast<const float*>(rgb32);
-	uint8_t* dst = static_cast<uint8_t*>(rgb8);
-	for (int i = 0; i < w * h * 3; ++i)
-		dst[i] = src[i] * (255.f);
+bool imglib::process_image(void* data, ChannelType type, int comps, int w, int h, ProcFlags flags) {
+	if (type == UInt8)
+		return process_image_internal<uint8_t>(data, comps, w, h, flags);
+	else if (type == UInt16)
+		return process_image_internal<uint16_t>(data, comps, w, h, flags);
+	else if (type == Float)
+		return process_image_internal<float>(data, comps, w, h, flags);
+	return false;
 }
 
-void imglib::convert_rgba32_rgba8(const void* rgba32, void* rgba8, int w, int h) {
-	const float* src = static_cast<const float*>(rgba32);
-	uint8_t* dst = static_cast<uint8_t*>(rgba8);
-	for (int i = 0; i < w * h * 4; ++i)
-		dst[i] = src[i] * (255.f);
-}
-
-void imglib::convert_rgb8_rgb32(const void* rgb8, void* rgb32, int w, int h) {
-	const uint8_t* src = static_cast<const uint8_t*>(rgb8);
-	float* dst = static_cast<float*>(rgb32);
-	for (int i = 0; i < w * h * 3; ++i)
-		dst[i] = src[i] / (255.f);
-}
-
-void imglib::convert_rgba8_rgba32(const void* rgba8, void* rgba32, int w, int h) {
-	const uint8_t* src = static_cast<const uint8_t*>(rgba8);
-	float* dst = static_cast<float*>(rgba32);
-	for (int i = 0; i < w * h * 4; ++i)
-		dst[i] = src[i] / (255.f);
-}
-
-void imglib::convert_rgb16_rgb32(const void* rgb16, void* rgb32, int w, int h) {
-	const uint16_t* src = static_cast<const uint16_t*>(rgb16);
-	float* dst = static_cast<float*>(rgb32);
-	for (int i = 0; i < w * h * 3; ++i)
-		dst[i] = src[i] / (65535.f);
-}
-
-void imglib::convert_rgba16_rgba32(const void* rgba16, void* rgba32, int w, int h) {
-	const uint16_t* src = static_cast<const uint16_t*>(rgba16);
-	float* dst = static_cast<float*>(rgba32);
-	for (int i = 0; i < w * h * 4; ++i)
-		dst[i] = src[i] / (65535.f);
-}
-
-void imglib::convert_rgb32_rgb16(const void* rgb32, void* rgb16, int w, int h) {
-	const float* src = static_cast<const float*>(rgb32);
-	uint16_t* dst = static_cast<uint16_t*>(rgb16);
-	for (int i = 0; i < w * h * 3; ++i)
-		dst[i] = src[i] * 65535.f;
-}
-
-void imglib::convert_rgba32_rgba16(const void* rgba32, void* rgba16, int w, int h) {
-	const float* src = static_cast<const float*>(rgba32);
-	uint16_t* dst = static_cast<uint16_t*>(rgba16);
-	for (int i = 0; i < w * h * 4; ++i)
-		dst[i] = src[i] * 65535.f;
-}
-
-void imglib::convert_rgb8_rgb16(const void* rgb8, void* rgb16, int w, int h) {
-	auto* src = static_cast<const uint8_t*>(rgb8);
-	auto* dst = static_cast<uint16_t*>(rgb16);
-	for (int i = 0; i < w * h * 3; ++i)
-		dst[i] = src[i] * (65535.f / 255.f);
-}
-void imglib::convert_rgba8_rgba16(const void* rgba8, void* rgba16, int w, int h) {
-	auto* src = static_cast<const uint8_t*>(rgba8);
-	auto* dst = static_cast<uint16_t*>(rgba16);
-	for (int i = 0; i < w * h * 4; ++i)
-		dst[i] = src[i] * (65535.f / 255.f);
-}
 
 FileFormat imglib::image_get_format_from_file(const char* str) {
 	auto* ext = str::get_ext(str);
