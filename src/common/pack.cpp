@@ -47,6 +47,8 @@ bool pack::pack_image(imglib::ImageData_t& image, int destChannels, ChannelPack_
 
 	// Validate input data
 	for (int i = 0; i < numChannels; ++i) {
+		if (!channels[i].srcData)
+			continue;
 		if (channels[i].srcChan < channels[i].comps && channels[i].dstChan < destChannels)
 			continue;
 		return false;
