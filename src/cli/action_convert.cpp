@@ -43,6 +43,7 @@ namespace opts
 	static int compress;
 	static int width, height;
 	static int nomips;
+	static int toDX;
 } // namespace opts
 
 static bool get_version_from_str(const std::string& str, int& major, int& minor);
@@ -215,6 +216,15 @@ const OptionList& ActionConvert::get_options() const {
 				.type(OptType::Bool)
 				.value(false)
 				.help("Disable mipmaps for this texture"));
+
+		opts::toDX = opts.add(
+			ActionOption()
+				.long_opt("--opengl")
+				.short_opt("-gl")
+				.value(false)
+				.type(OptType::Bool)
+				.help("Treat the incoming normal map as a OpenGL normal map")
+		);
 	};
 	return opts;
 }
@@ -264,12 +274,13 @@ bool ActionConvert::process_file(
 
 	m_opts = &opts;
 
-	auto formatStr = opts.get<std::string>(opts::format);
-	auto srgb = opts.get<bool>(opts::srgb);
-	auto thumbnail = opts.get<bool>(opts::thumbnail);
-	auto verStr = opts.get<std::string>(opts::version);
+	const auto formatStr = opts.get<std::string>(opts::format);
+	const auto srgb = opts.get<bool>(opts::srgb);
+	const auto thumbnail = opts.get<bool>(opts::thumbnail);
+	const auto verStr = opts.get<std::string>(opts::version);
+	const auto isNormal = opts.get<bool>(opts::normal);
 
-	auto nomips = opts.get<bool>(opts::nomips);
+	const auto nomips = opts.get<bool>(opts::nomips);
 	this->m_mips = nomips ? 1 : std::max(opts.get<int>(opts::mips), 1);
 
 	m_width = opts.get<int>(opts::width);
@@ -292,17 +303,24 @@ bool ActionConvert::process_file(
 	// We will choose the best format to operate on here. This simplifies later code and lets us avoid extraneous
 	// conversions
 	auto formatInfo = CVTFFile::GetImageFormatInfo(format);
-	const auto procFormat = [formatInfo]() -> VTFImageFormat
+	imglib::ChannelType procChanType;
+	const auto procFormat = [formatInfo, &procChanType]() -> VTFImageFormat
 	{
 		auto maxBpp = std::max(
 			std::max(formatInfo.uiRedBitsPerPixel, formatInfo.uiGreenBitsPerPixel),
 			std::max(formatInfo.uiBlueBitsPerPixel, formatInfo.uiAlphaBitsPerPixel));
-		if (maxBpp > 16)
+		if (maxBpp > 16) {
+			procChanType = imglib::Float;
 			return IMAGE_FORMAT_RGBA32323232F;
-		else if (maxBpp > 8)
+		}
+		else if (maxBpp > 8) {
+			procChanType = imglib::UInt16;
 			return IMAGE_FORMAT_RGBA16161616F;
-		else
+		}
+		else {
+			procChanType = imglib::UInt8;
 			return IMAGE_FORMAT_RGBA8888;
+		}
 	}();
 
 	// If we're processing a VTF, let's add that VTF image data
@@ -325,6 +343,22 @@ bool ActionConvert::process_file(
 	}
 	// Add standard image data
 	else if (!add_image_data(srcFile, vtfFile.get(), procFormat, true)) {
+		return false;
+	}
+
+	// Process the image if necessary
+	if (isNormal && opts.get<bool>(opts::toDX)) {
+		if (!imglib::process_image(vtfFile->GetData(0, 0, 0, 0), procChanType, 4, vtfFile->GetWidth(), vtfFile->GetHeight(),
+			imglib::PROC_GL_TO_DX_NORM)) {
+
+			std::cerr << "Could not process vtf\n";
+			return false;
+		}
+	}
+
+	// Set the properties based on user input
+	if (!set_properties(vtfFile.get())) {
+		std::cerr << "Could not set properties on VTF\n";
 		return false;
 	}
 
