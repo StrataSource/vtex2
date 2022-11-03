@@ -28,7 +28,8 @@ namespace opts
 	static int nmap, hmap;
 	static int rmap, aomap, mmap;
 	static int width, height, mips;
-	static int batch, recurse;
+	static int mconst, rconst, aoconst, hconst;
+	static int toDX;
 } // namespace opts
 
 std::string ActionPack::get_help() const {
@@ -42,6 +43,7 @@ const OptionList& ActionPack::get_options() const {
 		opts::mrao = opts.add(
 			ActionOption()
 				.long_opt("--mrao")
+				.short_opt("-mrao")
 				.type(OptType::Bool)
 				.value(false)
 				.help("Create MRAO map"));
@@ -54,25 +56,10 @@ const OptionList& ActionPack::get_options() const {
 				.value(false)
 				.help("Create packed normal+height map"));
 
-		opts::batch = opts.add(
-			ActionOption()
-				.long_opt("--batch")
-				.short_opt("-b")
-				.type(OptType::Bool)
-				.value(false)
-				.help("Pack files in a directory"));
-
-		opts::recurse = opts.add(
-			ActionOption()
-				.long_opt("--recursive")
-				.short_opt("-r")
-				.type(OptType::Bool)
-				.value(false)
-				.help("Pack files in a directory recursively"));
-
 		opts::nmap = opts.add(
 			ActionOption()
 				.long_opt("--normal-map")
+				.short_opt("-nmap")
 				.type(OptType::String)
 				.value("")
 				.help("Normal map to pack"));
@@ -80,6 +67,7 @@ const OptionList& ActionPack::get_options() const {
 		opts::hmap = opts.add(
 			ActionOption()
 				.long_opt("--height-map")
+				.short_opt("-hmap")
 				.type(OptType::String)
 				.value("")
 				.help("Height map to pack"));
@@ -87,6 +75,7 @@ const OptionList& ActionPack::get_options() const {
 		opts::aomap = opts.add(
 			ActionOption()
 				.long_opt("--ao-map")
+				.short_opt("-aomap")
 				.type(OptType::String)
 				.value("")
 				.help("AO map to pack"));
@@ -94,6 +83,7 @@ const OptionList& ActionPack::get_options() const {
 		opts::mmap = opts.add(
 			ActionOption()
 				.long_opt("--metalness-map")
+				.short_opt("-mmap")
 				.type(OptType::String)
 				.value("")
 				.help("Metalness map to pack"));
@@ -101,6 +91,7 @@ const OptionList& ActionPack::get_options() const {
 		opts::rmap = opts.add(
 			ActionOption()
 				.long_opt("--roughness-map")
+				.short_opt("-rmap")
 				.type(OptType::String)
 				.value("")
 				.help("Roughness map to pack"));
@@ -119,7 +110,7 @@ const OptionList& ActionPack::get_options() const {
 				.value(-1)
 				.long_opt("--height")
 				.short_opt("-h")
-				.help("Height of output image. If set to -1, autodetect from input maps"));
+				.help("Height (dimension) of output image. If set to -1, autodetect from input maps"));
 
 		opts::mips = opts.add(
 			ActionOption()
@@ -137,6 +128,51 @@ const OptionList& ActionPack::get_options() const {
 				.value(false)
 				.end_of_line(true)
 				.help("Output file name"));
+
+		opts::rconst = opts.add(
+			ActionOption()
+				.long_opt("--roughness-const")
+				.short_opt("-rc")
+				.type(OptType::Float)
+				.value(1.0f)
+				.help("If no roughness map is specified, fill roughness value with this constant value")
+		);
+
+		opts::mconst = opts.add(
+			ActionOption()
+				.long_opt("--metalness-const")
+				.short_opt("-mc")
+				.type(OptType::Float)
+				.value(0.0f)
+				.help("If no metalness map is specified, fill metalness value with this constant value")
+		);
+
+		opts::aoconst = opts.add(
+			ActionOption()
+				.long_opt("--ao-const")
+				.short_opt("-aoc")
+				.type(OptType::Float)
+				.value(1.0f)
+				.help("If no AO map is specified, fill AO value with this constant value")
+		);
+
+		opts::hconst = opts.add(
+			ActionOption()
+				.long_opt("--height-const")
+				.short_opt("-hc")
+				.type(OptType::Float)
+				.value(0.0f)
+				.help("If no height map is specified, fill height value with this constant value")
+		);
+
+		opts::toDX = opts.add(
+			ActionOption()
+				.long_opt("--opengl")
+				.short_opt("-gl")
+				.value(false)
+				.type(OptType::Bool)
+				.help("Treat the incoming normal map as a OpenGL normal map")
+		);
 	};
 	return opts;
 }
@@ -159,6 +195,9 @@ int ActionPack::exec(const OptionList& opts) {
 		const auto m = opts.get<std::string>(opts::mmap);
 		const auto ao = opts.get<std::string>(opts::aomap);
 		return pack_mrao(outpath, m, r, ao, opts) ? 0 : 1;
+	}
+	else {
+		std::cerr << "No action specified: please specify --mrao or --normal!\n";
 	}
 
 	return 1;
@@ -202,9 +241,19 @@ static void determine_size(int* w, int* h, const imglib::ImageData_t (&datas)[N]
 }
 
 //
-// Resize images if required
+// Resize images if required and converts too!
 //
 static void resize_if_required(imglib::ImageData_t& data, int w, int h) {
+	if (!data.data)
+		return;
+
+	// @TODO: For now we're just going to force 8 bit per channel.
+	//  Sometimes we do get 16bpc images, mainly for height data, but we're cramming that into a RGBA8888 texture anyways.
+	//  It'd be best to eventually support RGBA16F normals for instances where you need precise height data.
+	if (data.info.type != imglib::UInt8) {
+		assert(imglib::convert(data, imglib::UInt8));
+	}
+
 	if (data.info.w == w && data.info.h == h)
 		return;
 	assert(imglib::resize(data, w, h));
@@ -217,10 +266,12 @@ bool ActionPack::pack_mrao(const std::filesystem::path& outpath, const path& met
 	auto w = opts.get<int>(opts::width);
 	auto h = opts.get<int>(opts::height);
 
-	if (roughnessFile.empty() || aoFile.empty() || metalnessFile.empty()) {
-		std::cerr << "--roughness-map, --ao-map and --metalness-map must all be specified!\n";
-		return false;
-	}
+	const bool usingR = !roughnessFile.empty();
+	const bool usingM = !metalnessFile.empty();
+	const bool usingAO = !aoFile.empty();
+	const float rconst = opts.get<float>(opts::rconst);
+	const float mconst = opts.get<float>(opts::mconst);
+	const float aoconst = opts.get<float>(opts::aoconst);
 
 	imglib::ImageData_t roughnessData {}, aoData {}, metalnessData {};
 	util::cleanup cleanup([&]{
@@ -230,11 +281,11 @@ bool ActionPack::pack_mrao(const std::filesystem::path& outpath, const path& met
 	});
 
 	// Load all images
-	if (!load_image(roughnessFile, roughnessData))
+	if (usingR && !load_image(roughnessFile, roughnessData))
 		return false;
-	if (!load_image(aoFile, aoData))
+	if (usingAO && !load_image(aoFile, aoData))
 		return false;
-	if (!load_image(metalnessFile, metalnessData))
+	if (usingM && !load_image(metalnessFile, metalnessData))
 		return false;
 
 	// Determine width and height if not set
@@ -260,21 +311,21 @@ bool ActionPack::pack_mrao(const std::filesystem::path& outpath, const path& met
 			.dstChan = 0,
 			.srcData = static_cast<uint8_t*>(metalnessData.data),
 			.comps = metalnessData.info.comps,
-			.constant = 0.0f
+			.constant = mconst
 		},
 		{
 			.srcChan = 0,
 			.dstChan = 1,
 			.srcData = static_cast<uint8_t*>(roughnessData.data),
 			.comps = roughnessData.info.comps,
-			.constant = 0.0f
+			.constant = rconst
 		},
 		{
 			.srcChan = 0,
 			.dstChan = 2,
 			.srcData = static_cast<uint8_t*>(aoData.data),
 			.comps = aoData.info.comps,
-			.constant = 0.0f
+			.constant = aoconst
 		}
 	};
 
@@ -307,9 +358,13 @@ bool ActionPack::pack_mrao(const std::filesystem::path& outpath, const path& met
 bool ActionPack::pack_normal(const std::filesystem::path& outpath, const path& normalFile, const path& heightFile, const OptionList& opts) {
 	auto w = opts.get<int>(opts::width);
 	auto h = opts.get<int>(opts::height);
+	const bool isGL = opts.get<bool>(opts::toDX);
 
-	if (normalFile.empty() || heightFile.empty()) {
-		std::cerr << "--height-map and --normal-map must all be specified!\n";
+	const bool usingH = !heightFile.empty();
+	const float hconst = opts.get<float>(opts::hconst);
+
+	if (normalFile.empty()) {
+		std::cerr << "--normal-map must be specified!\n";
 		return false;
 	}
 
@@ -320,7 +375,7 @@ bool ActionPack::pack_normal(const std::filesystem::path& outpath, const path& n
 	});
 
 	// Load all images
-	if (!load_image(heightFile, heightData))
+	if (usingH && !load_image(heightFile, heightData))
 		return false;
 	if (!load_image(normalFile, normalData))
 		return false;
@@ -339,6 +394,10 @@ bool ActionPack::pack_normal(const std::filesystem::path& outpath, const path& n
 	// Resize images if required
 	resize_if_required(normalData, w, h);
 	resize_if_required(heightData, w, h);
+
+	// Convert normal to DX if necessary
+	if (isGL)
+		imglib::process_image(normalData, imglib::PROC_GL_TO_DX_NORM);
 
 	// Packing config
 	pack::ChannelPack_t pack[] = {
@@ -368,7 +427,7 @@ bool ActionPack::pack_normal(const std::filesystem::path& outpath, const path& n
 			.dstChan = 3,
 			.srcData = static_cast<uint8_t*>(heightData.data),
 			.comps = heightData.info.comps,
-			.constant = 0.0f
+			.constant = hconst
 		}
 	};
 
