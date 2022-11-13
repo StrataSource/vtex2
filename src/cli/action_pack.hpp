@@ -26,7 +26,7 @@ namespace vtex2
 	private:
 		using path = std::filesystem::path;
 
-		bool pack_mrao(const path& outpath, const path& m, const path& r, const path& ao, const OptionList& opts);
+		bool pack_mrao(const path& outpath, const path& m, const path& r, const path& ao, const path& tmask, const OptionList& opts);
 		bool pack_normal(const path& outpath, const path& n, const path& h, const OptionList& opts);
 		bool save_vtf(const path& out, const imglib::ImageData_t& data,  const OptionList& opts, bool normal);
 
