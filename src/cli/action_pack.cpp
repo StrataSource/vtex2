@@ -26,7 +26,7 @@ namespace opts
 	static int mrao;
 	static int normal;
 	static int nmap, hmap;
-	static int rmap, aomap, mmap;
+	static int rmap, aomap, mmap, tmtex;
 	static int width, height, mips;
 	static int mconst, rconst, aoconst, hconst;
 	static int toDX;
@@ -72,13 +72,21 @@ const OptionList& ActionPack::get_options() const {
 				.value("")
 				.help("Height map to pack"));
 
+		opts::tmtex = opts.add(
+			ActionOption()
+				.long_opt("--tint-mask")
+				.short_opt("-tmask")
+				.type(OptType::String)
+				.value("")
+				.help("Tint mask texture to use [MRAO only]"));
+
 		opts::aomap = opts.add(
 			ActionOption()
 				.long_opt("--ao-map")
 				.short_opt("-aomap")
 				.type(OptType::String)
 				.value("")
-				.help("AO map to pack"));
+				.help("AO map to pack [MRAO only]"));
 
 		opts::mmap = opts.add(
 			ActionOption()
@@ -86,7 +94,7 @@ const OptionList& ActionPack::get_options() const {
 				.short_opt("-mmap")
 				.type(OptType::String)
 				.value("")
-				.help("Metalness map to pack"));
+				.help("Metalness map to pack [MRAO only]"));
 
 		opts::rmap = opts.add(
 			ActionOption()
@@ -94,7 +102,7 @@ const OptionList& ActionPack::get_options() const {
 				.short_opt("-rmap")
 				.type(OptType::String)
 				.value("")
-				.help("Roughness map to pack"));
+				.help("Roughness map to pack [MRAO only]"));
 
 		opts::width = opts.add(
 			ActionOption()
@@ -194,7 +202,8 @@ int ActionPack::exec(const OptionList& opts) {
 		const auto r = opts.get<std::string>(opts::rmap);
 		const auto m = opts.get<std::string>(opts::mmap);
 		const auto ao = opts.get<std::string>(opts::aomap);
-		return pack_mrao(outpath, m, r, ao, opts) ? 0 : 1;
+		const auto tm = opts.get<std::string>(opts::tmtex);
+		return pack_mrao(outpath, m, r, ao, tm, opts) ? 0 : 1;
 	}
 	else {
 		std::cerr << "No action specified: please specify --mrao or --normal!\n";
@@ -262,22 +271,24 @@ static void resize_if_required(imglib::ImageData_t& data, int w, int h) {
 //
 // Pack an MRAO map
 //
-bool ActionPack::pack_mrao(const std::filesystem::path& outpath, const path& metalnessFile, const path& roughnessFile, const path& aoFile, const OptionList& opts) {
+bool ActionPack::pack_mrao(const std::filesystem::path& outpath, const path& metalnessFile, const path& roughnessFile, const path& aoFile, const path& tmask, const OptionList& opts) {
 	auto w = opts.get<int>(opts::width);
 	auto h = opts.get<int>(opts::height);
 
 	const bool usingR = !roughnessFile.empty();
 	const bool usingM = !metalnessFile.empty();
 	const bool usingAO = !aoFile.empty();
+	const bool usingTMask = !tmask.empty();
 	const float rconst = opts.get<float>(opts::rconst);
 	const float mconst = opts.get<float>(opts::mconst);
 	const float aoconst = opts.get<float>(opts::aoconst);
 
-	imglib::ImageData_t roughnessData {}, aoData {}, metalnessData {};
+	imglib::ImageData_t roughnessData {}, aoData {}, metalnessData {}, tmaskData {};
 	util::cleanup cleanup([&]{
 		imglib::image_free(roughnessData);
 		imglib::image_free(aoData);
 		imglib::image_free(metalnessData);
+		imglib::image_free(tmaskData);
 	});
 
 	// Load all images
@@ -287,12 +298,14 @@ bool ActionPack::pack_mrao(const std::filesystem::path& outpath, const path& met
 		return false;
 	if (usingM && !load_image(metalnessFile, metalnessData))
 		return false;
+	if (usingTMask && !load_image(tmask, tmaskData))
+		return false;
 
 	// Determine width and height if not set
 	if (w <= 0)
-		determine_size(&w, nullptr, {roughnessData, aoData, metalnessData});
+		determine_size(&w, nullptr, {roughnessData, aoData, metalnessData, tmaskData});
 	if (h <= 0)
-		determine_size(nullptr, &h, {roughnessData, aoData, metalnessData});
+		determine_size(nullptr, &h, {roughnessData, aoData, metalnessData, tmaskData});
 
 	if (w <= 0 || h <= 0) {
 		std::cerr << "-h and -w are required to pack!\n";
@@ -303,6 +316,7 @@ bool ActionPack::pack_mrao(const std::filesystem::path& outpath, const path& met
 	resize_if_required(roughnessData, w, h);
 	resize_if_required(metalnessData, w, h);
 	resize_if_required(aoData, w, h);
+	resize_if_required(tmaskData, w, h);
 
 	// Packing config
 	pack::ChannelPack_t pack[] = {
@@ -326,14 +340,25 @@ bool ActionPack::pack_mrao(const std::filesystem::path& outpath, const path& met
 			.srcData = static_cast<uint8_t*>(aoData.data),
 			.comps = aoData.info.comps,
 			.constant = aoconst
+		},
+		{
+			.srcChan = 0,
+			.dstChan = 3,
+			.srcData = static_cast<uint8_t*>(tmaskData.data),
+			.comps = tmaskData.info.comps,
+			.constant = 1,
 		}
 	};
 
 	imglib::ImageData_t outImage {};
+	
+	// tint mask texture is last in channels list, so skip it if we're not given a tint mask
+	const auto numSrcChans = usingTMask ? util::ArraySize(pack) : util::ArraySize(pack)-1;
+	const auto numDstChans = usingTMask ? 4 : 3; // RGBA when using tint mask texture in mrao.w
 
 	// Finally, pack the darn thing
 	bool success = true;
-	if (!pack::pack_image(outImage, 3, pack, util::ArraySize(pack), w, h)) {
+	if (!pack::pack_image(outImage, numDstChans, pack, numSrcChans, w, h)) {
 		success = false;
 		std::cerr << "Packing failed!\n";
 		return false;
@@ -455,6 +480,7 @@ bool ActionPack::pack_normal(const std::filesystem::path& outpath, const path& n
 
 //
 // Save resulting image data to disk
+// Automatically determines the format to use on save based on channels in data
 //
 bool ActionPack::save_vtf(const std::filesystem::path& out, const imglib::ImageData_t& data, const OptionList& opts, bool normal) {
 	file_ = new CVTFFile();
