@@ -343,6 +343,7 @@ bool ActionConvert::process_file(
 	}
 	// Add standard image data
 	else if (!add_image_data(srcFile, vtfFile.get(), procFormat, true)) {
+		std::cerr << "Could not add image data from file " << srcFile << "\n";
 		return false;
 	}
 
