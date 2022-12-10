@@ -11,6 +11,7 @@
 #include <iostream>
 #include <algorithm>
 
+#include "nameof.hpp"
 #include "fmt/format.h"
 #include "VTFLib.h"
 
@@ -616,7 +617,7 @@ bool ActionConvert::add_image_data_raw(
 
 		if (!CVTFFile::Convert((vlByte*)data, dest, w, h, dataFormat, format)) {
 			std::cerr << fmt::format(
-				"Could not convert from {} to {}!\n", ImageFormatToString(format), ImageFormatToString(format));
+				"Could not convert from {} to {}!\n", NAMEOF_ENUM(dataFormat), NAMEOF_ENUM(format));
 			free(dest);
 			return false;
 		}
