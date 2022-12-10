@@ -3,6 +3,7 @@
 #include <iostream>
 #include <functional>
 
+#include "nameof.hpp"
 #include "fmt/format.h"
 
 #include "action_extract.hpp"
@@ -211,7 +212,7 @@ bool ActionExtract::extract_file(
 
 	if (!ok) {
 		std::cerr << fmt::format(
-			"Could not convert image format '{}' -> '{}'!\n", ImageFormatToString(file_->GetFormat()),
+			"Could not convert image format '{}' -> '{}'!\n", NAMEOF_ENUM(file_->GetFormat()),
 			destIsFloat ? "RGBA32323232F" : "RGBA8888");
 		return false;
 	}

@@ -7,6 +7,7 @@
 
 #include "VTFLib.h"
 
+#include "nameof.hpp"
 #include "fmt/format.h"
 
 using namespace vtex2;
@@ -89,7 +90,7 @@ int ActionInfo::exec(const OptionList& opts) {
 	}
 
 	fmt::print(FMT_STRING("VTF Version {}.{}\n"), file_->GetMajorVersion(), file_->GetMinorVersion());
-	fmt::print(FMT_STRING("Image format: {}\n"), ImageFormatToString(fmt));
+	fmt::print(FMT_STRING("Image format: {}\n"), NAMEOF_ENUM(fmt));
 	fmt::print(
 		FMT_STRING("Dimensions (WxHxD): {} x {} x {}\n"), file_->GetWidth(), file_->GetHeight(), file_->GetDepth());
 	fmt::print(
@@ -152,7 +153,7 @@ void ActionInfo::compact_info() {
 		FMT_STRING("VTF {}.{}, {} x {} x {}, {} frames, {} mipmaps, {} faces, image format {}"),
 		file_->GetMajorVersion(), file_->GetMinorVersion(), file_->GetWidth(), file_->GetHeight(), file_->GetDepth(),
 		file_->GetFrameCount(), file_->GetMipmapCount(), file_->GetFaceCount(),
-		ImageFormatToString(file_->GetFormat()));
+		NAMEOF_ENUM(file_->GetFormat()));
 	if (file_->GetMajorVersion() >= 7 && file_->GetMinorVersion() >= 6)
 		fmt::print(FMT_STRING(", DEFLATE compression level {}\n"), file_->GetAuxCompressionLevel());
 	else

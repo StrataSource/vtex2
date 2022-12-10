@@ -7,13 +7,6 @@
 #include <string>
 
 /**
- * Convert an image format enum to string
- * Returns a textual representation of the enum
- * default case is trapped
- */
-const char* ImageFormatToString(VTFImageFormat format);
-
-/**
  * Convert to image format enum from string
  * Returns IMAGE_FORMAT_NONE if arg could not be converted
  * comparisons are not case sensitive. ie rgba8888 matches with RGBA8888
