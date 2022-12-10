@@ -271,21 +271,6 @@ bool handle_option(int argc, int& argIndex, char** argv, ActionOption& opt) {
 				opt.m_value = valueStr;
 				return true;
 			}
-		case OptType::Vec2:
-			{
-				assert(0);
-				break;
-			}
-		case OptType::Vec3:
-			{
-				assert(0);
-				break;
-			}
-		case OptType::Vec4:
-			{
-				assert(0);
-				break;
-			}
 		default:
 			assert(0);
 	}
@@ -310,14 +295,14 @@ static bool arg_compare(const char* arg, const char* argname) {
 }
 
 void show_help(int exitCode) {
-	printf("USAGE: vtex2 [OPTIONS] ACTION [ARGS]...\n");
-	printf("\n  Command line utility to modify, convert and show info about Valve Texture Files.\n");
-	printf("\nOptions:\n");
-	printf("\nCommands:\n");
+	std::cout << "USAGE: vtex2 [OPTIONS] ACTION [ARGS]...\n"
+		<< "\n  Command line utility to modify, convert and show info about Valve Texture Files.\n"
+		<< "\nOptions:\n"
+		<< "\nCommands:\n";
 	for (auto& a : s_actions) {
-		printf("  %s - %s\n", a->get_name().c_str(), a->get_help().c_str());
+		fmt::print("  {} - {}\n", a->get_name().c_str(), a->get_help().c_str());
 	}
-	printf("\n");
+	std::cout << std::endl;
 	exit(exitCode);
 }
 
@@ -332,12 +317,12 @@ void show_action_help(BaseAction* action, int exitCode) {
 	}
 
 	if (endOfLine.length())
-		printf("USAGE: vtex2 %s [OPTIONS] %s...\n", action->get_name().c_str(), endOfLine.c_str());
+		fmt::print( "USAGE: vtex2 {} [OPTIONS] {}...\n", action->get_name(), endOfLine);
 	else
-		printf("USAGE: vtex2 %s [OPTIONS]\n", action->get_name().c_str());
+		fmt::print("USAGE: vtex2 {} [OPTIONS]\n", action->get_name());
 
-	printf("\n  %s\n", action->get_help().c_str());
-	printf("\nOptions:\n");
+	fmt::print("\n  {}\n", action->get_help());
+	std::cout << "\nOptions:\n";
 
 	// Sort the options before display (ugly but works)
 	auto sortedOpts = action->get_options().opts();
@@ -359,20 +344,19 @@ void show_action_help(BaseAction* action, int exitCode) {
 
 		// Display choices (formatting hell right here!!!)
 		if (!a.m_choices.empty()) {
-			printf("  %s", args);
-			printf(" [");
+			fmt::print("  {} [", args);
 			for (int i = 0; i < a.m_choices.size(); ++i) {
-				printf("%s", a.m_choices[i].c_str());
+				fmt::print("{}", a.m_choices[i]);
 				if (i != a.m_choices.size() - 1)
-					printf(", ");
+					std::cout << ", ";
 			}
-			printf("]\n%-23s%s\n", "", a.m_desc.c_str());
+			fmt::print("]\n{:>34} {}\n", "", a.m_desc);
 		}
 		// No choices, just help info
 		else {
-			printf("  %-20s %s\n", args, a.m_desc.c_str());
+			fmt::print("  {:<32} {}\n", args, a.m_desc);
 		}
 	}
-	printf("\n");
+	std::cout << std::endl;
 	exit(exitCode);
 }
