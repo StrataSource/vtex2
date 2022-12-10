@@ -1,8 +1,4 @@
-# Qt base script
-
-if(UNIX)
-	set(QT_INCLUDE "/usr/include/x86_64-linux-gnu/qt5")
-endif()
+# Qt base script (pretty much only for WIN32!)
 
 if(WIN32)
 	# On Windows, the install dir must be specified, as it's not standardized
@@ -15,9 +11,8 @@ if(WIN32)
 	else()
 		message(FATAL_ERROR "--!@ Please define your QT install dir with -DQT_BASEDIR=C:/your/qt5/here")
 	endif()
+	message("Using ${QT_INCLUDE} as our Qt include dir")
 endif()	
-
-message("Using ${QT_INCLUDE} as our Qt include dir")
 
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
