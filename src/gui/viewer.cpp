@@ -53,7 +53,8 @@ ViewerMainWindow::ViewerMainWindow(QWidget* pParent)
 
 void ViewerMainWindow::setup_ui() {
 	setWindowTitle("VTFView");
-
+	setWindowIcon(QIcon(":/icon.png"));
+	
 	setTabPosition(Qt::LeftDockWidgetArea, QTabWidget::North);
 	setTabPosition(Qt::RightDockWidgetArea, QTabWidget::North);
 
