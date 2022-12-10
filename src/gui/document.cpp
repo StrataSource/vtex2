@@ -3,6 +3,7 @@
 #include <QMessageBox>
 
 #include <fmt/format.h>
+#include "nameof.hpp"
 
 #include "document.hpp"
 #include "common/util.hpp"
@@ -42,8 +43,8 @@ bool Document::save(const std::string& path) {
 	// Image needs converting
 	if (format_ != IMAGE_FORMAT_NONE) {
 		fmt::print(
-			"Converting image from {} to {} on save...\n", ImageFormatToString(file_->GetFormat()),
-			ImageFormatToString(format_));
+			"Converting image from {} to {} on save...\n", NAMEOF_ENUM(file_->GetFormat()),
+			NAMEOF_ENUM(format_));
 		if (!file_->ConvertInPlace(format_))
 			return false;
 	}
