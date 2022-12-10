@@ -22,9 +22,6 @@ namespace vtex2
 		Float,	   // Float type, may be scientific notation, normal or hex
 		Int,	   // Integer type, 1e6, 0x399, etc
 		Bool,	   // A simple switch
-		Vec2,	   // 2 component float vector
-		Vec3,	   // 3 component float vector
-		Vec4,	   // 4 component float vector
 		String,	   // Arbitrary string
 		StringArr, // Multiple strings
 	};
