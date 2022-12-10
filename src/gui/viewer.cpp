@@ -113,7 +113,7 @@ void ViewerMainWindow::setup_ui() {
 
 	// Tabify the docks
 	tabifyDockWidget(infoDock, resDock);
-	infoDock->activateWindow();
+	infoDock->raise();
 
 	// Setup the menu bars
 	setup_menubar();
@@ -697,6 +697,9 @@ void ResourceWidget::set_vtf(VTFLib::CVTFFile* file) {
 			new QTableWidgetItem(fmt::format(FMT_STRING("{:d} bytes ({:.2f} KiB)"), size, size / 1024.f).c_str());
 		table_->setItem(i, 2, sizeItem);
 	}
+	
+	// Qt is too stupid to remember what we set earlier!
+	table_->setHorizontalHeaderLabels(QStringList() << "Resource Name" << "Resource Type" << "Data Size");
 }
 
 void ResourceWidget::setup_ui() {
@@ -707,10 +710,6 @@ void ResourceWidget::setup_ui() {
 	table_->verticalHeader()->hide();
 	table_->setColumnCount(3);
 	table_->horizontalHeader()->setStretchLastSection(true);
-	table_->setHorizontalHeaderItem(0, new QTableWidgetItem("Resource Name"));
-	table_->setHorizontalHeaderItem(1, new QTableWidgetItem("Resource Type"));
-	table_->setHorizontalHeaderItem(2, new QTableWidgetItem("Data Size"));
-
 	layout->addWidget(table_);
 }
 
