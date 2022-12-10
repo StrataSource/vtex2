@@ -70,8 +70,8 @@ int main(int argc, char** argv) {
 		}
 		// Handle action-specific arguments
 		else if (parsingAction) {
-			// Check if this is the implicit -h or --help
-			if (!std::strcmp(arg, "-h") || !std::strcmp(arg, "--help")) {
+			// Check if this is the implicit -? or --help
+			if (!std::strcmp(arg, "-?") || !std::strcmp(arg, "--help")) {
 				if (!action)
 					show_help(0);
 				show_action_help(action, 0);
@@ -121,7 +121,7 @@ int main(int argc, char** argv) {
 		}
 		// Handle args to the global vtex2
 		else {
-			if (!std::strcmp(arg, "-h") || !std::strcmp("--help", arg))
+			if (!std::strcmp(arg, "-?") || !std::strcmp("--help", arg))
 				show_help(0);
 		}
 	}
@@ -297,8 +297,9 @@ static bool arg_compare(const char* arg, const char* argname) {
 void show_help(int exitCode) {
 	std::cout << "USAGE: vtex2 [OPTIONS] ACTION [ARGS]...\n"
 		<< "\n  Command line utility to modify, convert and show info about Valve Texture Files.\n"
-		<< "\nOptions:\n"
-		<< "\nCommands:\n";
+		<< "\nOptions:\n";
+	fmt::print("  {:<32} - Display this help text\n", "-?,--help");
+	std::cout << "\nCommands:\n";
 	for (auto& a : s_actions) {
 		fmt::print("  {} - {}\n", a->get_name().c_str(), a->get_help().c_str());
 	}
