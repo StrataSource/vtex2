@@ -337,8 +337,8 @@ VTFImageFormat imglib::get_vtf_format(const ImageInfo_t& info) {
 			// @TODO: How to handle RGBA16? DONT i guess
 			return IMAGE_FORMAT_RGBA16161616F;
 		case imglib::Float:
-			return (info.comps == 3) ? IMAGE_FORMAT_RGB323232F : IMAGE_FORMAT_RGBA32323232F;
+			return (info.comps == 3) ? IMAGE_FORMAT_RGB323232F : (info.comps == 1 ? IMAGE_FORMAT_R32F : IMAGE_FORMAT_RGBA32323232F);
 		default:
-			return (info.comps == 3) ? IMAGE_FORMAT_RGB888 : IMAGE_FORMAT_RGBA8888;
+			return (info.comps == 3) ? IMAGE_FORMAT_RGB888 : (info.comps == 1 ? IMAGE_FORMAT_I8 : IMAGE_FORMAT_RGBA8888);
 	}
 }
