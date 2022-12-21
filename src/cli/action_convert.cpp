@@ -281,8 +281,8 @@ bool ActionConvert::process_file(
 	const auto verStr = opts.get<std::string>(opts::version);
 	const auto isNormal = opts.get<bool>(opts::normal);
 
-	const auto nomips = opts.get<bool>(opts::nomips);
-	this->m_mips = nomips ? 1 : std::max(opts.get<int>(opts::mips), 1);
+	auto nomips = opts.get<bool>(opts::nomips);
+	m_mips = nomips ? 1 : std::max(opts.get<int>(opts::mips), 1);
 
 	m_width = opts.get<int>(opts::width);
 	m_height = opts.get<int>(opts::height);
@@ -477,6 +477,10 @@ bool ActionConvert::set_properties(VTFLib::CVTFFile* vtfFile) {
 		vtfFile->SetFlag(TEXTUREFLAGS_POINTSAMPLE, true);
 	if (m_opts->get<bool>(opts::srgb))
 		vtfFile->SetFlag(TEXTUREFLAGS_SRGB, true);
+
+	// Mip count gets set earlier by user input
+	if (vtfFile->GetMipmapCount() == 1)
+		vtfFile->SetFlag(TEXTUREFLAGS_NOMIP, true);
 
 	// Same deal for the below issues- only override default if specified
 	if (m_opts->has(opts::startframe))
