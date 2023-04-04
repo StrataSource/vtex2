@@ -12,7 +12,7 @@
 
 #include "fmt/format.h"
 
-// Fucking windows bullshit
+// Windows junk
 #undef min
 #undef max
 
@@ -272,8 +272,8 @@ static void resize_if_required(imglib::ImageData_t& data, int w, int h) {
 // Pack an MRAO map
 //
 bool ActionPack::pack_mrao(const std::filesystem::path& outpath, const path& metalnessFile, const path& roughnessFile, const path& aoFile, const path& tmask, const OptionList& opts) {
-	auto w = opts.get<int>(opts::width);
-	auto h = opts.get<int>(opts::height);
+	auto clampw = opts.get<int>(opts::width);
+	auto clamph = opts.get<int>(opts::height);
 
 	const bool usingR = !roughnessFile.empty();
 	const bool usingM = !metalnessFile.empty();
@@ -302,14 +302,17 @@ bool ActionPack::pack_mrao(const std::filesystem::path& outpath, const path& met
 		return false;
 
 	// Determine width and height if not set
-	if (w <= 0)
-		determine_size(&w, nullptr, {roughnessData, aoData, metalnessData, tmaskData});
-	if (h <= 0)
-		determine_size(nullptr, &h, {roughnessData, aoData, metalnessData, tmaskData});
+	int w = -1, h = -1;
+	determine_size(&w, nullptr, {roughnessData, aoData, metalnessData, tmaskData});
+	determine_size(nullptr, &h, {roughnessData, aoData, metalnessData, tmaskData});
 
 	if (w <= 0 || h <= 0) {
-		std::cerr << "-h and -w are required to pack!\n";
-		return false;
+		if (clampw <= 0 || clamph <= 0) {
+			std::cerr << ((clampw <= 0) ? "-w" : "-h") << " is required to pack this image.\n";
+			return false;
+		}
+		w = clampw;
+		h = clamph;
 	}
 
 	// Resize images if required
@@ -369,6 +372,18 @@ bool ActionPack::pack_mrao(const std::filesystem::path& outpath, const path& met
 	imglib::image_free(aoData);
 	imglib::image_free(metalnessData);
 
+	// If user requested clamp, do that now
+	if (clampw > 0 || clamph > 0) {
+		if (!(clampw > 0 && clamph > 0)) {
+			std::cerr << "Both -w/--width and -h/--height must be specified to clamp the image.\n";
+			return false;
+		}
+		if (!imglib::resize(outImage, clampw, clamph)) {
+			std::cerr << "Image resize failed\n";
+			return false;
+		}
+	}
+
 	success = save_vtf(outpath, outImage, opts, false);
 
 	imglib::image_free(outImage);
@@ -381,8 +396,8 @@ bool ActionPack::pack_mrao(const std::filesystem::path& outpath, const path& met
 // Pack height into normal
 //
 bool ActionPack::pack_normal(const std::filesystem::path& outpath, const path& normalFile, const path& heightFile, const OptionList& opts) {
-	auto w = opts.get<int>(opts::width);
-	auto h = opts.get<int>(opts::height);
+	auto clampw = opts.get<int>(opts::width);
+	auto clamph = opts.get<int>(opts::height);
 	const bool isGL = opts.get<bool>(opts::toDX);
 
 	const bool usingH = !heightFile.empty();
@@ -406,14 +421,17 @@ bool ActionPack::pack_normal(const std::filesystem::path& outpath, const path& n
 		return false;
 
 	// Determine width and height if not set
-	if (w <= 0)
-		determine_size(&w, nullptr, {normalData, heightData});
-	if (h <= 0)
-		determine_size(nullptr, &h, {normalData, heightData});
+	int w = -1, h = -1;
+	determine_size(&w, nullptr, {normalData, heightData});
+	determine_size(nullptr, &h, {normalData, heightData});
 
 	if (w <= 0 || h <= 0) {
-		std::cerr << "-h and -w are required to pack!\n";
-		return false;
+		if (clampw <= 0 || clamph <= 0) {
+			std::cerr << ((clampw <= 0) ? "-w" : "-h") << " is required to pack this image.\n";
+			return false;
+		}
+		w = clampw;
+		h = clamph;
 	}
 
 	// Resize images if required
@@ -469,6 +487,18 @@ bool ActionPack::pack_normal(const std::filesystem::path& outpath, const path& n
 	// Free up some mem
 	imglib::image_free(heightData);
 	imglib::image_free(normalData);
+
+	// If user requested clamp, do that now
+	if (clampw > 0 || clamph > 0) {
+		if (!(clampw > 0 && clamph > 0)) {
+			std::cerr << "Both -w/--width and -h/--height must be specified to clamp the image.\n";
+			return false;
+		}
+		if (!imglib::resize(outImage, clampw, clamph)) {
+			std::cerr << "Image resize failed\n";
+			return false;
+		}
+	}
 
 	success = save_vtf(outpath, outImage, opts, true);
 
