@@ -389,7 +389,7 @@ void ViewerMainWindow::reload_file() {
 }
 
 void ViewerMainWindow::import_file() {
-	auto filename = QFileDialog::getOpenFileName(this, tr("Open Image"), QString(), "JPG Files (*.jpg)").toUtf8();
+	auto filename = QFileDialog::getOpenFileName(this, tr("Open Image"), QString(), "JPG Files (*.jpg *.jpeg);;PNG Files (*.png);;TGA Files (*.tga)").toUtf8();
 
 	if (filename.isEmpty())
 		return;
