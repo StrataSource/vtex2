@@ -19,6 +19,7 @@
 #include "common/enums.hpp"
 #include "common/image.hpp"
 #include "common/util.hpp"
+#include "common/vtftools.hpp"
 
 // Windows garbage!!
 #undef min
@@ -456,7 +457,7 @@ bool ActionConvert::set_properties(VTFLib::CVTFFile* vtfFile) {
 	}
 
 	// Set the DEFLATE compression level
-	if (compressionLevel > 0 && !vtfFile->SetAuxCompressionLevel(compressionLevel)) {
+	if (!vtfFile->SetAuxCompressionLevel(compressionLevel) && compressionLevel != 0) {
 		std::cerr << fmt::format("Could not set compression level to {}!\n", compressionLevel);
 		return false;
 	}
@@ -535,9 +536,6 @@ bool ActionConvert::add_image_data(
 //  format: Dest format of the data, file->GetFormat() will return this when this returns true
 //
 bool ActionConvert::add_vtf_image_data(CVTFFile* srcFile, VTFLib::CVTFFile* file, VTFImageFormat format) {
-
-	const auto dstImageFmt = file->GetFormat();
-
 	const auto frameCount = srcFile->GetFrameCount();
 	const auto faceCount = srcFile->GetFaceCount();
 	const auto sliceCount = srcFile->GetDepth();
@@ -549,45 +547,7 @@ bool ActionConvert::add_vtf_image_data(CVTFFile* srcFile, VTFLib::CVTFFile* file
 
 	// Resize VTF only if necessary (This is expensive and kinda crap)
 	if (m_width != -1 && m_height != -1 && (srcWidth != m_width || srcHeight != m_height)) {
-
-		// Choose the best channel type for this
-		auto fmtinfo = file->GetImageFormatInfo(file->GetFormat());
-		auto maxBpp = std::max(
-			std::max(fmtinfo.uiAlphaBitsPerPixel, fmtinfo.uiBlueBitsPerPixel),
-			std::max(fmtinfo.uiGreenBitsPerPixel, fmtinfo.uiRedBitsPerPixel));
-
-		// Choose the best image format type for this, so we dont lose image depth!
-		// We'll just switch between RGBA8/16/32F for simplicity, although it will require 33% more mem.
-		imglib::ChannelType type = imglib::ChannelType::UInt8;
-		if (maxBpp > 16)
-			type = imglib::ChannelType::Float;
-		else if (maxBpp > 8)
-			type = imglib::ChannelType::UInt16;
-
-		// Create a working buffer to hold our data when we want to convert it
-		auto convSize = CVTFFile::ComputeImageSize(m_width, m_height, 1, dstImageFmt);
-		auto convBuffer = std::make_unique<vlByte[]>(convSize);
-
-		// Resize all base level mips for each frame, face and slice.
-		for (vlUInt uiFrame = 0; uiFrame < frameCount; ++uiFrame) {
-			for (vlUInt uiFace = 0; uiFace < faceCount; ++uiFace) {
-				for (vlUInt uiSlice = 0; uiSlice < sliceCount; ++uiSlice) {
-					// Get & resize the data now
-					void* data = srcFile->GetData(uiFrame, uiFace, uiSlice, 0);
-					void* newData = nullptr;
-					if (!imglib::resize(data, &newData, type, 4, srcWidth, srcHeight, m_width, m_height)) {
-						return false;
-					}
-
-					// Load the image data into the dest now
-					file->SetData(uiFrame, uiFace, uiSlice, 0, static_cast<vlByte*>(newData));
-
-					free(newData);
-				}
-			}
-		}
-
-		return true;
+		return vtf::resize(srcFile, m_width, m_height, file);
 	}
 	else {
 		// Load all image data normally
