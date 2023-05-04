@@ -27,9 +27,10 @@ add_definitions(-DVTFLIB_STATIC=1)
 set(COMMON_SRC
 		src/common/image.cpp
 		src/common/enums.cpp
-		src/common/pack.cpp)
+		src/common/pack.cpp
+		src/common/vtftools.cpp)
 
-add_library(libcom STATIC ${COMMON_SRC})
+add_library(com STATIC ${COMMON_SRC})
 
 ##############################
 # CLI
@@ -66,12 +67,12 @@ if (WIN32)
 	set_target_properties(vtfview PROPERTIES VS_DEBUGGER_ENVIRONMENT "PATH=%PATH%;${QT_BASEDIR}/bin;")
 endif ()
 
-target_link_libraries(vtex2 PRIVATE vtflib_static libcom fmt::fmt)
+target_link_libraries(vtex2 PRIVATE vtflib_static com fmt::fmt)
 target_include_directories(vtex2 PRIVATE src external)
-target_include_directories(libcom PRIVATE src external external/vtflib/lib)
+target_include_directories(com PRIVATE src external external/vtflib/lib)
 
 if (BUILD_GUI)
-	target_link_libraries(vtfview PRIVATE vtflib_static libcom fmt::fmt)
+	target_link_libraries(vtfview PRIVATE vtflib_static com fmt::fmt)
 	target_include_directories(vtfview PRIVATE src external)
 
 	find_package(Qt6 REQUIRED COMPONENTS Widgets Core Gui Svg)
