@@ -10,9 +10,11 @@
 #include "common/enums.hpp"
 
 using namespace vtfview;
+using namespace VTFLib;
 
 Document::Document(QObject* parent)
 	: QObject(parent) {
+	history_.push_back({});
 }
 
 void Document::new_file() {
@@ -41,12 +43,19 @@ bool Document::save(const std::string& path) {
 		return true;
 
 	// Image needs converting
-	if (format_ != IMAGE_FORMAT_NONE) {
+	if (data().format_ != IMAGE_FORMAT_NONE) {
 		fmt::print(
 			"Converting image from {} to {} on save...\n", NAMEOF_ENUM(file_->GetFormat()),
-			NAMEOF_ENUM(format_));
-		if (!file_->ConvertInPlace(format_))
+			NAMEOF_ENUM(data().format_));
+		if (!file_->ConvertInPlace(data().format_))
 			return false;
+	}
+	
+	bool needsMipRegen = data().mips_ != file_->GetMipmapCount();
+	
+	// Image needs resize
+	if (data().width_ != file_->GetWidth() || data().height_ != file_->GetHeight()) {
+		needsMipRegen = true; // Always regenerate mips if we change size
 	}
 
 	if (!file_->Save(path.empty() ? path_.c_str() : path.c_str())) {
@@ -93,26 +102,107 @@ void Document::unload_file() {
 	file_ = nullptr;
 	path_ = "";
 	unmark_modified();
-	format_ = IMAGE_FORMAT_NONE;
+	data().format_ = IMAGE_FORMAT_NONE;
 }
 
-bool Document::load_file_internal(const void* data, size_t size) {
+bool Document::load_file_internal(const void* imgdata, size_t size) {
 	auto* oldFile = file_;
 	file_ = new VTFLib::CVTFFile();
-	if (!file_->Load(data, size)) {
+	if (!file_->Load(imgdata, size)) {
 		delete file_;
 		file_ = oldFile;
 		return false;
 	}
+	
+	clear_history();
+	data().height_ = file_->GetHeight();
+	data().width_ = file_->GetWidth();
+	data().mips_ = file_->GetMipmapCount();
+	data().flags_ = file_->GetFlags();
+	data().startFrame_ = file_->GetStartFrame();
+
 	delete oldFile;
 	return true;
 }
 
 void Document::set_format(VTFImageFormat format) {
 	if (format == file_->GetFormat()) {
-		format_ = IMAGE_FORMAT_NONE;
+		data().format_ = IMAGE_FORMAT_NONE;
 		return;
 	}
-	format_ = format;
+	data().format_ = format;
 	mark_modified();
+}
+
+void Document::set_height(int height) {
+	if (height != data().height_) {
+		data().height_ = height;
+		mark_modified();
+	}
+}
+
+void Document::set_width(int width) {
+	if (data().width_ != width) {
+		data().width_ = width;
+		mark_modified();
+	}
+}
+
+void Document::set_mips(int mipCount) {
+	if (mipCount != data().mips_) {
+		data().mips_ = mipCount;
+		mark_modified();
+	}
+}
+
+int Document::max_mips() const {
+	return CVTFFile::ComputeMipmapCount(data().width_, data().height_, 1);
+}
+
+void Document::set_flag(VTFImageFlag flag, bool on) {
+	if ((data().flags_ & flag) != (on ? flag : 0)) {
+		if (on)
+			data().flags_ |= flag;
+		else
+			data().flags_ &= ~flag;
+		mark_modified();
+	}
+}
+
+void Document::mark_history(const std::string& name) {
+	// Erase any additional entries in the history (i.e. leftover from undo-ing)
+	if (histIndex_ != history_.size()-1)
+		history_.erase(history_.begin() + histIndex_ + 1, history_.end());
+	history_.push_back({
+		.name = name,
+		.d = data()
+	});
+	histIndex_++;
+}
+
+bool Document::undo() {
+	if (histIndex_ == 0)
+		return false;
+	histIndex_--;
+	return true;
+}
+
+bool Document::redo() {
+	if (histIndex_ == history_.size()-1)
+		return false;
+	histIndex_++;
+	return true;
+}
+
+void Document::set_start_frame(int frame) {
+	if (frame != data().startFrame_) {
+		data().startFrame_ = frame;
+		mark_modified();
+	}
+}
+
+void Document::clear_history() {
+	history_.clear();
+	history_.push_back({});
+	histIndex_ = 0;
 }

@@ -6,12 +6,10 @@
 #include <cstring>
 #include <fstream>
 #include <string>
-#include <memory>
 #include <charconv>
 
 #include "strtools.hpp"
 
-/******************************/
 namespace util
 {
 

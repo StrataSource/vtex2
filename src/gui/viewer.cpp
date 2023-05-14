@@ -4,6 +4,7 @@
 #include "common/image.hpp"
 #include "common/util.hpp"
 #include "fmt/format.h"
+#include "nameof.hpp"
 
 #include <QApplication>
 #include <QCheckBox>
@@ -118,56 +119,13 @@ void ViewerMainWindow::setup_ui() {
 
 	// Setup the menu bars
 	setup_menubar();
-
-	// Register global actions
-	shortcuts_.resize(Action_Count);
-	shortcuts_[Actions::Save] = new QShortcut(
-		QKeySequence::Save, this,
-		[this]
-		{
-			this->save();
-		});
-
-	shortcuts_[Actions::SaveAs] = new QShortcut(
-		QKeySequence::SaveAs, this,
-		[this]
-		{
-			this->save(true);
-		});
-
-	shortcuts_[Actions::Reload] = new QShortcut(
-		QKeySequence("Ctrl+Shift+R"), this,
-		[this]
-		{
-			this->reload_file();
-		});
-
-	shortcuts_[Actions::Save] = new QShortcut(
-		QKeySequence::Open, this,
-		[this]
-		{
-			this->open_file();
-		});
-
-	shortcuts_[Actions::ZoomIn] = new QShortcut(
-		QKeySequence(Qt::CTRL | Qt::Key_Plus), this,
-		[this]
-		{
-			this->viewer_->zoomIn();
-		});
-
-	shortcuts_[Actions::ZoomOut] = new QShortcut(
-		QKeySequence(Qt::CTRL | Qt::Key_Minus), this,
-		[this]
-		{
-			this->viewer_->zoomOut();
-		});
 }
 
 void ViewerMainWindow::setup_menubar() {
 	auto* toolBar = new QToolBar(this);
 	this->addToolBar(Qt::ToolBarArea::TopToolBarArea, toolBar);
 
+	// Top toolbar thing
 	toolBar->addAction(
 		style()->standardIcon(QStyle::SP_FileIcon), "New File",
 		[this]()
@@ -205,6 +163,7 @@ void ViewerMainWindow::setup_menubar() {
 		{
 			viewer_->zoomOut();
 		});
+
 	// File menu
 	auto* fileMenu = menuBar()->addMenu(tr("File"));
 	fileMenu->addAction(
@@ -212,32 +171,32 @@ void ViewerMainWindow::setup_menubar() {
 		[this]()
 		{
 			this->new_file();
-		});
+		})->setShortcut(QKeySequence::New);
 	fileMenu->addAction(
 		style()->standardIcon(QStyle::SP_DialogOpenButton), "Open",
 		[this]()
 		{
 			this->open_file();
-		});
+		})->setShortcut(QKeySequence::Open);
 	fileMenu->addSeparator();
 	fileMenu->addAction(
 		style()->standardIcon(QStyle::SP_DialogSaveButton), "Save",
 		[this]()
 		{
 			document()->save();
-		});
+		})->setShortcut(QKeySequence::Save);
 	fileMenu->addAction(
 		style()->standardIcon(QStyle::SP_DialogSaveButton), "Save As",
 		[this]()
 		{
 			this->save(true);
-		});
+		})->setShortcut(QKeySequence::SaveAs);
 	fileMenu->addAction(
 		style()->standardIcon(QStyle::SP_BrowserReload), "Reload File",
 		[this]()
 		{
 			this->reload_file();
-		});
+		})->setShortcut(QKeySequence::Refresh);
 	fileMenu->addAction(
 		QIcon::fromTheme("document-import", style()->standardIcon(QStyle::SP_ArrowUp)), "Import File",
 		[this]()
@@ -252,6 +211,24 @@ void ViewerMainWindow::setup_menubar() {
 			this->close();
 		});
 
+	// Edit menu
+	auto* editMenu = menuBar()->addMenu(tr("Edit"));
+	editMenu->addAction(
+		"Undo",
+		[this]()
+		{
+			this->document()->undo();
+		}
+	)->setShortcut(QKeySequence::Undo);
+
+	editMenu->addAction(
+		"Redo",
+		[this]()
+		{
+			this->document()->redo();
+		}
+	)->setShortcut(QKeySequence::Redo);
+
 	// Help menu
 	auto* helpMenu = menuBar()->addMenu(tr("Help"));
 	helpMenu->addAction(
@@ -260,7 +237,7 @@ void ViewerMainWindow::setup_menubar() {
 		{
 			QMessageBox::about(
 				this, tr("About"),
-				"VTFView & vtex2 by Chaos Initiative\n\nBuilt using VTFLib by Neil 'Jed' Jedrzejewski & Ryan Gregg, "
+				"VTFView & vtex2 developed by the Strata Source Team\n\nBuilt using VTFLib by Neil 'Jed' Jedrzejewski & Ryan Gregg, "
 				"modified by Joshua Ashton");
 		});
 	helpMenu->addAction(
@@ -760,8 +737,9 @@ constexpr struct TextureFlag {
 //////////////////////////////////////////////////////////////////////////////////
 // ImageSettingsWidget
 //////////////////////////////////////////////////////////////////////////////////
-ImageSettingsWidget::ImageSettingsWidget(Document*, ImageViewWidget* viewer, QWidget* parent)
-	: QWidget(parent) {
+ImageSettingsWidget::ImageSettingsWidget(Document* doc, ImageViewWidget* viewer, QWidget* parent)
+	: QWidget(parent),
+	doc_(doc) {
 	setup_ui(viewer);
 }
 
@@ -807,9 +785,9 @@ void ImageSettingsWidget::setup_ui(ImageViewWidget* viewer) {
 		startFrame_, &QSpinBox::textChanged,
 		[this](const QString&)
 		{
-			if (!file_)
+			if (!doc_)
 				return;
-			file_->SetStartFrame(startFrame_->value());
+			doc_->set_start_frame(startFrame_->value());
 			if (!settingFile_)
 				emit fileModified();
 		});
@@ -829,9 +807,10 @@ void ImageSettingsWidget::setup_ui(ImageViewWidget* viewer) {
 			check, &QCheckBox::stateChanged,
 			[this, flag](int newState)
 			{
-				if (!file_)
+				if (!doc_)
 					return;
-				file_->SetFlag((VTFImageFlag)flag.flag, newState);
+				doc_->mark_history(fmt::format("{} {}", newState ? "set" : "clear", NAMEOF_ENUM((VTFImageFlag)flag.flag)));
+				doc_->set_flag((VTFImageFlag)flag.flag, newState);
 				if (!settingFile_)
 					emit fileModified();
 			});
@@ -865,7 +844,6 @@ void ImageSettingsWidget::set_vtf(VTFLib::CVTFFile* file) {
 		return;
 	}
 
-	file_ = file;
 	startFrame_->setValue(file->GetStartFrame());
 	mip_->setValue(0);
 	frame_->setValue(file->GetStartFrame());

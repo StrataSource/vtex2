@@ -50,22 +50,6 @@ namespace vtfview
 			return document()->load_file(path);
 		}
 
-		enum Actions {
-			Save,
-			SaveAs,
-			Load,
-			Reload,
-			ZoomIn,
-			ZoomOut,
-
-			Action_Count,
-		};
-
-		QShortcut* get_shortcut(Actions act) {
-			assert(act < Action_Count && act >= 0);
-			return shortcuts_[act];
-		}
-
 	protected:
 		void setup_ui();
 		void setup_menubar();
@@ -220,7 +204,7 @@ namespace vtfview
 		QSpinBox* face_ = nullptr;
 		QSpinBox* mip_ = nullptr;
 		QSpinBox* startFrame_ = nullptr;
-		VTFLib::CVTFFile* file_ = nullptr;
+		Document* doc_ = nullptr;
 		std::unordered_map<uint32_t, QCheckBox*> flagChecks_;
 		bool settingFile_ = false;
 	};
