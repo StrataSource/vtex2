@@ -217,15 +217,8 @@ bool ActionExtract::extract_file(
 		return false;
 	}
 
-	imglib::ImageData_t data{};
-	data.info.comps = comps;
-	data.info.frames = 1; // @TODO: Multi-frame support
-	data.info.h = h;
-	data.info.w = w;
-	data.info.type = destIsFloat ? imglib::Float : imglib::UInt8;
-	data.data = imageData;
-
-	if (!imglib::image_save(data, outFile.string().c_str(), targetFmt)) {
+	imglib::Image image(imageData, destIsFloat ? imglib::Float : imglib::UInt8, comps, w, h, true);
+	if (!image.save(outFile.string().c_str(), targetFmt)) {
 		std::cerr << fmt::format("Could not save image to '{}'!\n", outFile.string());
 		return false;
 	}
