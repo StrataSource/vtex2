@@ -54,7 +54,7 @@ ViewerMainWindow::ViewerMainWindow(QWidget* pParent)
 void ViewerMainWindow::setup_ui() {
 	setWindowTitle("VTFView");
 	setWindowIcon(QIcon(":/icon.png"));
-	
+
 	setTabPosition(Qt::LeftDockWidgetArea, QTabWidget::North);
 	setTabPosition(Qt::RightDockWidgetArea, QTabWidget::North);
 
@@ -389,12 +389,15 @@ void ViewerMainWindow::reload_file() {
 }
 
 void ViewerMainWindow::import_file() {
-	auto filename = QFileDialog::getOpenFileName(this, tr("Open Image"), QString(), "JPG Files (*.jpg *.jpeg);;PNG Files (*.png);;TGA Files (*.tga)").toUtf8();
+	auto filename =
+		QFileDialog::getOpenFileName(
+			this, tr("Open Image"), QString(), "JPG Files (*.jpg *.jpeg);;PNG Files (*.png);;TGA Files (*.tga)")
+			.toUtf8();
 
 	if (filename.isEmpty())
 		return;
 
-	auto image = imglib::image_begin(filename);
+	auto image = imglib::Image::load(filename);
 
 	if (!image) {
 		QMessageBox::warning(
@@ -403,25 +406,12 @@ void ViewerMainWindow::import_file() {
 		return;
 	}
 
-	auto data = imglib::image_load(image);
-
-	if (!data.data) {
-		QMessageBox::warning(
-			this, "Could not load image", fmt::format(FMT_STRING("Failed to load image: {}"), filename.data()).c_str(),
-			QMessageBox::Ok);
-		return;
-	}
-
 	auto file = new CVTFFile();
 
-	file->Init(data.info.w, data.info.h, 1, 1, 1, imglib::get_vtf_format(data.info));
-	file->SetData(1, 1, 1, 0, (vlByte*)data.data);
+	file->Init(image->width(), image->height(), 1, 1, 1, image->vtf_format());
+	file->SetData(1, 1, 1, 0, image->data<vlByte>());
 
 	document()->load_file(file);
-
-	// free image data
-	imglib::image_free(data);
-	imglib::image_end(image);
 }
 
 //////////////////////////////////////////////////////////////////////////////////
@@ -698,9 +688,13 @@ void ResourceWidget::set_vtf(VTFLib::CVTFFile* file) {
 			new QTableWidgetItem(fmt::format(FMT_STRING("{:d} bytes ({:.2f} KiB)"), size, size / 1024.f).c_str());
 		table_->setItem(i, 2, sizeItem);
 	}
-	
+
 	// Qt is too stupid to remember what we set earlier!
-	table_->setHorizontalHeaderLabels(QStringList() << "Resource Name" << "Resource Type" << "Data Size");
+	table_->setHorizontalHeaderLabels(
+		QStringList()
+		<< "Resource Name"
+		<< "Resource Type"
+		<< "Data Size");
 }
 
 void ResourceWidget::setup_ui() {

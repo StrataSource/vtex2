@@ -17,4 +17,4 @@ namespace vtf
 	 * @returns true if the resize passed
 	 */
 	bool resize(const VTFLib::CVTFFile* srcFile, int newWidth, int newHeight, VTFLib::CVTFFile* file);
-}
+} // namespace vtf

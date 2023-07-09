@@ -4,6 +4,9 @@
 
 #include "VTFLib.h"
 
+#undef min
+#undef max
+
 using namespace VTFLib;
 
 bool vtf::resize(const CVTFFile* srcFile, int newWidth, int newHeight, CVTFFile* file) {

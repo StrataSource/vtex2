@@ -152,8 +152,7 @@ void ActionInfo::compact_info() {
 	fmt::print(
 		FMT_STRING("VTF {}.{}, {} x {} x {}, {} frames, {} mipmaps, {} faces, image format {}"),
 		file_->GetMajorVersion(), file_->GetMinorVersion(), file_->GetWidth(), file_->GetHeight(), file_->GetDepth(),
-		file_->GetFrameCount(), file_->GetMipmapCount(), file_->GetFaceCount(),
-		NAMEOF_ENUM(file_->GetFormat()));
+		file_->GetFrameCount(), file_->GetMipmapCount(), file_->GetFaceCount(), NAMEOF_ENUM(file_->GetFormat()));
 	if (file_->GetMajorVersion() >= 7 && file_->GetMinorVersion() >= 6)
 		fmt::print(FMT_STRING(", DEFLATE compression level {}\n"), file_->GetAuxCompressionLevel());
 	else

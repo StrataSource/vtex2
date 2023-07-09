@@ -23,12 +23,7 @@ namespace vtex2
 }
 
 // Global list of actions
-static BaseAction* s_actions[] = {
-	new ActionInfo(),
-	new ActionExtract(),
-	new ActionConvert(),
-	new ActionPack()
-};
+static BaseAction* s_actions[] = {new ActionInfo(), new ActionExtract(), new ActionConvert(), new ActionPack()};
 
 static bool handle_option(int argc, int& argIndex, char** argv, ActionOption& opt);
 static bool arg_compare(const char* arg, const char* argname);
@@ -153,20 +148,10 @@ int main(int argc, char** argv) {
  * If false, value is not modified at all
  */
 static bool split_arg(const char* arg, std::string& value) {
-	for (const char* s = arg; *s; s++) {
-		if (*s == '"' || *s == '\'')
-			break;
-		// Unquoted equal!!!
-		if (*s == '=') {
-			// Extract portion following =
-			char comp2[8192];
-			std::strncpy(comp2, s + 1, sizeof(comp2));
-			comp2[sizeof(comp2) - 1] = 0;
-			value = comp2;
-			return true;
-		}
-	}
-	return false;
+	auto* s = strpbrk(arg, "=");
+	if (s)
+		value = s;
+	return !!s;
 }
 
 /**
@@ -295,7 +280,8 @@ static bool arg_compare(const char* arg, const char* argname) {
 }
 
 void show_help(int exitCode) {
-	std::cout << "USAGE: vtex2 [OPTIONS] ACTION [ARGS]...\n"
+	std::cout
+		<< "USAGE: vtex2 [OPTIONS] ACTION [ARGS]...\n"
 		<< "\n  Command line utility to modify, convert and show info about Valve Texture Files.\n"
 		<< "\nOptions:\n";
 	fmt::print("  {:<32} - Display this help text\n", "-?,--help");
@@ -318,7 +304,7 @@ void show_action_help(BaseAction* action, int exitCode) {
 	}
 
 	if (endOfLine.length())
-		fmt::print( "USAGE: vtex2 {} [OPTIONS] {}...\n", action->get_name(), endOfLine);
+		fmt::print("USAGE: vtex2 {} [OPTIONS] {}...\n", action->get_name(), endOfLine);
 	else
 		fmt::print("USAGE: vtex2 {} [OPTIONS]\n", action->get_name());
 

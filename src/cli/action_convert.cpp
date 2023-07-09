@@ -225,8 +225,7 @@ const OptionList& ActionConvert::get_options() const {
 				.short_opt("-gl")
 				.value(false)
 				.type(OptType::Bool)
-				.help("Treat the incoming normal map as a OpenGL normal map")
-		);
+				.help("Treat the incoming normal map as a OpenGL normal map"));
 	};
 	return opts;
 }
@@ -351,8 +350,9 @@ bool ActionConvert::process_file(
 
 	// Process the image if necessary
 	if (isNormal && opts.get<bool>(opts::toDX)) {
-		if (!imglib::process_image(vtfFile->GetData(0, 0, 0, 0), procChanType, 4, vtfFile->GetWidth(), vtfFile->GetHeight(),
-			imglib::PROC_GL_TO_DX_NORM)) {
+		auto image = std::make_shared<imglib::Image>(
+			vtfFile->GetData(0, 0, 0, 0), procChanType, 4, vtfFile->GetWidth(), vtfFile->GetHeight(), true);
+		if (!image->process(imglib::PROC_GL_TO_DX_NORM)) {
 
 			std::cerr << "Could not process vtf\n";
 			return false;
@@ -502,31 +502,20 @@ bool ActionConvert::set_properties(VTFLib::CVTFFile* vtfFile) {
 bool ActionConvert::add_image_data(
 	const std::filesystem::path& imageSrc, VTFLib::CVTFFile* file, VTFImageFormat format, bool create) {
 
-	auto image = imglib::image_begin(imageSrc);
-	if (!image)
-		return false;
-
 	// Load the image
-	auto data = imglib::image_load(image);
-	util::cleanup dataCleanup(
-		[&]()
-		{
-			imglib::image_free(data);
-			imglib::image_end(image);
-		});
-
-	if (!data.data)
+	auto image = imglib::Image::load(imageSrc);
+	if (!image)
 		return false;
 
 	// If width and height are specified, resize in place
 	if (m_height != -1 && m_width != -1) {
-		if (!imglib::resize(data, m_width, m_height))
+		if (!image->resize(m_width, m_height))
 			return false;
 	}
 
 	// Add the raw image data
-	auto dataFormat = imglib::get_vtf_format(data.info);
-	return add_image_data_raw(file, data.data, format, dataFormat, data.info.w, data.info.h, create);
+	return add_image_data_raw(
+		file, image->data(), format, image->vtf_format(), image->width(), image->height(), create);
 }
 
 //

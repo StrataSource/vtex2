@@ -15,97 +15,107 @@
 
 using namespace imglib;
 
-FILE* imglib::image_begin(const char* filePath) {
-	return fopen(filePath, "rb");
+static ImageInfo_t image_info(FILE* fp);
+
+inline void* imgalloc(ChannelType type, int channels, int w, int h) {
+	return malloc(imglib::bytes_for_image(w, h, type, channels));
 }
 
-ImageInfo_t imglib::image_info(FILE* fp) {
-	ImageInfo_t info {};
-	stbi_info_from_file(fp, &info.w, &info.h, &info.comps);
-	info.frames = 1; // @TODO: animated image support
-
-	// Determine channel type
-	if (stbi_is_16_bit_from_file(fp))
-		info.type = ChannelType::UInt16;
-	else if (stbi_is_hdr_from_file(fp))
-		info.type = ChannelType::Float;
-	else
-		info.type = ChannelType::UInt8;
-
-	return info;
-}
-
-ImageData_t imglib::image_load(FILE* fp) {
-	auto info = image_info(fp);
-	ImageData_t data{};
-	data.info = info;
-	data.info.frames = 1;
-	if (info.type == ChannelType::Float) {
-		data.data = stbi_loadf_from_file(fp, &data.info.w, &data.info.h, &data.info.comps, info.comps);
-	}
-	else if (info.type == ChannelType::UInt16) {
-		data.data = stbi_load_from_file_16(fp, &data.info.w, &data.info.h, &data.info.comps, info.comps);
+Image::Image(void* data, ChannelType type, int channels, int w, int h, bool wrap)
+	: m_width(w),
+	  m_height(h),
+	  m_type(type),
+	  m_comps(channels) {
+	if (wrap) {
+		m_data = data;
+		m_owned = false;
 	}
 	else {
-		data.data = stbi_load_from_file(fp, &data.info.w, &data.info.h, &data.info.comps, info.comps);
+		m_data = imgalloc(type, channels, w, h);
+		memcpy(m_data, data, imglib::bytes_for_image(w, h, type, channels));
 	}
-	return data;
 }
 
-void imglib::image_free(ImageData_t& data) {
-	if (!data.data)
-		return;
-	free(data.data);
-	data.data = nullptr;
+Image::Image(ChannelType type, int channels, int w, int h, bool clear)
+	: m_width(w),
+	  m_height(h),
+	  m_type(type),
+	  m_comps(channels) {
+	const auto size = imglib::bytes_for_image(w, h, type, channels);
+	m_data = malloc(size);
+	if (clear)
+		memset(m_data, 0, size);
 }
 
-void imglib::image_end(FILE* fp) {
+Image::~Image() {
+	if (m_owned)
+		free(m_data);
+}
+
+std::shared_ptr<Image> Image::load(const char* path) {
+	FILE* fp = fopen(path, "rb");
+	if (!fp)
+		return nullptr;
+	auto img = load(fp);
 	fclose(fp);
+	return img;
 }
 
-bool imglib::image_save(const ImageData_t& data, FILE* fp, FileFormat format) {
-	if (!fp || !data.data || (format != Tga && format != Png && format != Jpeg && format != Bmp && format != Hdr))
-		return false;
-
-	if (format == Hdr) {
+std::shared_ptr<Image> Image::load(FILE* fp) {
+	auto info = image_info(fp);
+	auto image = std::make_shared<Image>();
+	if (info.type == ChannelType::Float) {
+		image->m_data = stbi_loadf_from_file(fp, &image->m_width, &image->m_height, &image->m_comps, 0);
+	}
+	else if (info.type == ChannelType::UInt16) {
+		image->m_data = stbi_load_from_file_16(fp, &image->m_width, &image->m_height, &image->m_comps, 0);
+	}
+	else {
+		image->m_data = stbi_load_from_file(fp, &image->m_width, &image->m_height, &image->m_comps, info.comps);
 	}
 
-	return true;
+	if (!image->m_data)
+		return nullptr;
+	return image;
 }
 
-bool imglib::image_save(const ImageData_t& data, const char* file, FileFormat format) {
-	if (!file || !data.data || (format != Tga && format != Png && format != Jpeg && format != Bmp && format != Hdr))
+void Image::clear() {
+	if (m_owned)
+		free(m_data);
+	m_data = nullptr;
+}
+
+bool Image::save(const char* file, FileFormat format) {
+	if (!file || !m_data || (format != Tga && format != Png && format != Jpeg && format != Bmp && format != Hdr))
 		return false;
 
 	bool bOk = false;
 	if (format == Hdr) {
 		// Convert if necessary. Needs to be float for HDR
-		auto* dataToUse = data.data;
+		auto* dataToUse = m_data;
 		bool dataIsOurs = false;
-		if (data.info.type != Float) {
-			dataToUse = malloc(data.info.w * data.info.h * sizeof(float) * data.info.comps);
+		if (m_type != Float) {
+			dataToUse = malloc(m_width * m_height * sizeof(float) * m_comps);
 			dataIsOurs = true;
-			if (!convert_formats(
-					data.data, dataToUse, data.info.type, Float, data.info.comps, data.info.w, data.info.h)) {
+			if (!convert_formats(m_data, dataToUse, m_type, Float, m_comps, m_width, m_height)) {
 				free(dataToUse);
 				return false;
 			}
 		}
 
-		bOk |= !!stbi_write_hdr(file, data.info.w, data.info.h, data.info.comps, (const float*)dataToUse);
+		bOk |= !!stbi_write_hdr(file, m_width, m_height, m_comps, (const float*)dataToUse);
 
 		if (dataIsOurs)
 			free(dataToUse);
 	}
 	else {
 		// Convert to RGBX8 if not already in that format - required for the other writers
-		auto* dataToUse = data.data;
+		auto* dataToUse = m_data;
 		bool dataIsOurs = false;
-		if (data.info.type != UInt8) {
-			dataToUse = malloc(data.info.w * data.info.h * sizeof(uint8_t) * data.info.comps);
+		if (m_type != UInt8) {
+			dataToUse = malloc(m_width * m_height * sizeof(uint8_t) * m_comps);
 			dataIsOurs = true;
-			if (!convert_formats(
-					data.data, dataToUse, data.info.type, UInt8, data.info.comps, data.info.w, data.info.h)) {
+			if (!convert_formats(m_data, dataToUse, m_type, UInt8, m_comps, m_width, m_height)) {
 				free(dataToUse);
 				return false;
 			}
@@ -113,16 +123,16 @@ bool imglib::image_save(const ImageData_t& data, const char* file, FileFormat fo
 
 		// Write the stuff out
 		if (format == Png) {
-			bOk = !!stbi_write_png(file, data.info.w, data.info.h, data.info.comps, dataToUse, 0);
+			bOk = !!stbi_write_png(file, m_width, m_height, m_comps, dataToUse, 0);
 		}
 		else if (format == Tga) {
-			bOk = !!stbi_write_tga(file, data.info.w, data.info.h, data.info.comps, dataToUse);
+			bOk = !!stbi_write_tga(file, m_width, m_height, m_comps, dataToUse);
 		}
 		else if (format == Jpeg) {
-			bOk = !!stbi_write_jpg(file, data.info.w, data.info.h, data.info.comps, dataToUse, 100);
+			bOk = !!stbi_write_jpg(file, m_width, m_height, m_comps, dataToUse, 100);
 		}
 		else if (format == Bmp) {
-			bOk = !!stbi_write_bmp(file, data.info.w, data.info.h, data.info.comps, dataToUse);
+			bOk = !!stbi_write_bmp(file, m_width, m_height, m_comps, dataToUse);
 		}
 
 		if (dataIsOurs)
@@ -132,19 +142,30 @@ bool imglib::image_save(const ImageData_t& data, const char* file, FileFormat fo
 	return bOk;
 }
 
-bool imglib::resize(ImageData_t& data, int newW, int newH) {
+bool Image::resize(int newW, int newH) {
 	void* newData = nullptr;
-	bool ret = resize(data.data, &newData, data.info.type, data.info.comps, data.info.w, data.info.h, newW, newH);
-
-	if (!ret)
+	if (!imglib::resize(m_data, &newData, m_type, m_comps, m_width, m_height, newW, newH))
 		return false;
 
 	// Free old data
-	free(data.data);
-	data.data = newData;
-	data.info.w = newW;
-	data.info.h = newH;
+	free(m_data);
+	m_data = newData;
+	m_width = newW;
+	m_height = newH;
 	return true;
+}
+
+VTFImageFormat Image::vtf_format() const {
+	switch (m_type) {
+		case imglib::UInt16:
+			// @TODO: How to handle RGBA16? DONT i guess
+			return IMAGE_FORMAT_RGBA16161616F;
+		case imglib::Float:
+			return (m_comps == 3) ? IMAGE_FORMAT_RGB323232F
+								  : (m_comps == 1 ? IMAGE_FORMAT_R32F : IMAGE_FORMAT_RGBA32323232F);
+		default:
+			return (m_comps == 3) ? IMAGE_FORMAT_RGB888 : (m_comps == 1 ? IMAGE_FORMAT_I8 : IMAGE_FORMAT_RGBA8888);
+	}
 }
 
 bool imglib::resize(
@@ -194,8 +215,9 @@ size_t imglib::bytes_for_image(int w, int h, ChannelType type, int comps) {
 	return w * h * comps * bpc;
 }
 
-template<int COMPS>
-bool convert_formats_internal(const void* srcData, void* dstData, ChannelType srcChanType, ChannelType dstChanType, int w, int h) {
+template <int COMPS>
+bool convert_formats_internal(
+	const void* srcData, void* dstData, ChannelType srcChanType, ChannelType dstChanType, int w, int h) {
 	static_assert(COMPS > 0 && COMPS <= 4, "Comps is out of range");
 
 	if (srcChanType == UInt8) {
@@ -246,46 +268,52 @@ bool imglib::convert_formats(
 	return false;
 }
 
-bool imglib::convert(ImageData_t& data, ChannelType dstChanType) {
-	void* dst = malloc(imglib::bytes_for_image(data.info.w, data.info.h, data.info.type, data.info.comps));
+bool Image::convert(ChannelType dstChanType) {
+	void* dst = malloc(imglib::bytes_for_image(m_width, m_height, m_type, m_comps));
 
-	if (!convert_formats(data.data, dst, data.info.type, dstChanType, data.info.comps, data.info.w, data.info.h)) {
+	if (!convert_formats(m_data, dst, m_type, dstChanType, m_comps, m_width, m_height)) {
 		free(dst);
 		return false;
 	}
 
-	free(data.data);
-	data.data = dst;
+	free(m_data);
+	m_data = dst;
 	return true;
 }
 
-template<typename T>
-static T fullval() = delete;
-template<> float fullval<float>() { return 1.0f; }
-template<> uint16_t fullval<uint16_t>() { return 65535; }
-template<> uint8_t fullval<uint8_t>() { return 255; }
+template <class T>
+constexpr T FULL_VAL;
+template <>
+constexpr float FULL_VAL<float> = 1.0f;
+template <>
+constexpr uint16_t FULL_VAL<uint16_t> = UINT16_MAX;
+template <>
+constexpr uint8_t FULL_VAL<uint8_t> = UINT8_MAX;
 
-template<class T>
+template <class T>
 static bool process_image_internal(void* indata, int comps, int w, int h, ProcFlags flags) {
 	T* data = static_cast<T*>(indata);
 	for (int i = 0; i < w * h * comps; i += comps) {
 		T* cur = data + i;
 		if (flags & PROC_GL_TO_DX_NORM)
-			cur[1] = fullval<T>()-cur[1]; // Invert green channel
+			cur[1] = FULL_VAL<T> - cur[1]; // Invert green channel
 	}
 	return true;
 }
 
-bool imglib::process_image(void* data, ChannelType type, int comps, int w, int h, ProcFlags flags) {
-	if (type == UInt8)
-		return process_image_internal<uint8_t>(data, comps, w, h, flags);
-	else if (type == UInt16)
-		return process_image_internal<uint16_t>(data, comps, w, h, flags);
-	else if (type == Float)
-		return process_image_internal<float>(data, comps, w, h, flags);
+bool Image::process(ProcFlags flags) {
+	switch (m_type) {
+		case UInt8:
+			return process_image_internal<uint8_t>(m_data, m_comps, m_width, m_height, flags);
+		case UInt16:
+			return process_image_internal<uint16_t>(m_data, m_comps, m_width, m_height, flags);
+		case Float:
+			return process_image_internal<float>(m_data, m_comps, m_width, m_height, flags);
+		default:
+			assert(0);
+	}
 	return false;
 }
-
 
 FileFormat imglib::image_get_format_from_file(const char* str) {
 	auto* ext = str::get_ext(str);
@@ -331,14 +359,18 @@ const char* imglib::image_get_extension(FileFormat format) {
 	}
 }
 
-VTFImageFormat imglib::get_vtf_format(const ImageInfo_t& info) {
-	switch (info.type) {
-		case imglib::UInt16:
-			// @TODO: How to handle RGBA16? DONT i guess
-			return IMAGE_FORMAT_RGBA16161616F;
-		case imglib::Float:
-			return (info.comps == 3) ? IMAGE_FORMAT_RGB323232F : (info.comps == 1 ? IMAGE_FORMAT_R32F : IMAGE_FORMAT_RGBA32323232F);
-		default:
-			return (info.comps == 3) ? IMAGE_FORMAT_RGB888 : (info.comps == 1 ? IMAGE_FORMAT_I8 : IMAGE_FORMAT_RGBA8888);
-	}
+static ImageInfo_t image_info(FILE* fp) {
+	ImageInfo_t info{};
+	stbi_info_from_file(fp, &info.w, &info.h, &info.comps);
+	info.frames = 1; // @TODO: animated image support
+
+	// Determine channel type
+	if (stbi_is_16_bit_from_file(fp))
+		info.type = ChannelType::UInt16;
+	else if (stbi_is_hdr_from_file(fp))
+		info.type = ChannelType::Float;
+	else
+		info.type = ChannelType::UInt8;
+
+	return info;
 }
