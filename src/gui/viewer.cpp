@@ -689,7 +689,7 @@ void ResourceWidget::set_vtf(VTFLib::CVTFFile* file) {
 		table_->setItem(i, 2, sizeItem);
 	}
 
-	// Qt is too stupid to remember what we set earlier!
+	// Clear removes the headers too :(
 	table_->setHorizontalHeaderLabels(
 		QStringList()
 		<< "Resource Name"
@@ -706,6 +706,12 @@ void ResourceWidget::setup_ui() {
 	table_->setColumnCount(3);
 	table_->horizontalHeader()->setStretchLastSection(true);
 	layout->addWidget(table_);
+
+	table_->setHorizontalHeaderLabels(
+		QStringList()
+		<< "Resource Name"
+		<< "Resource Type"
+		<< "Data Size");
 }
 
 //////////////////////////////////////////////////////////////////////////////////
