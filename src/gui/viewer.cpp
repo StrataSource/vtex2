@@ -31,6 +31,13 @@
 using namespace vtfview;
 using namespace VTFLib;
 
+#define PNG_FILE_FILTER		  "PNG Files (*.png)"
+#define JPEG_FILE_FILTER	  "JPEG Files (*.jpg *.jpeg)"
+#define TGA_FILE_FILTER		  "TGA Files (*.tga)"
+#define VTF_FILE_FILTER		  "VTF Files (*.vtf)"
+#define ANY_IMAGE_FILE_FILTER "Image Files (*.png *.jpeg *.jpg *.tga *.vtf)"
+#define ALL_IMAGE_FILTERS ANY_IMAGE_FILE_FILTER ";;" PNG_FILE_FILTER ";;" JPEG_FILE_FILTER ";;" VTF_FILE_FILTER ";;" TGA_FILE_FILTER
+
 //////////////////////////////////////////////////////////////////////////////////
 // ViewerMainWindow
 //////////////////////////////////////////////////////////////////////////////////
@@ -123,30 +130,30 @@ void ViewerMainWindow::setup_ui() {
 	shortcuts_.resize(Action_Count);
 	shortcuts_[Actions::Save] = new QShortcut(
 		QKeySequence::Save, this,
-		[this]
+		[this]()
 		{
-			this->save();
+			this->on_save();
 		});
 
 	shortcuts_[Actions::SaveAs] = new QShortcut(
 		QKeySequence::SaveAs, this,
 		[this]
 		{
-			this->save(true);
+			this->on_save(true);
 		});
 
 	shortcuts_[Actions::Reload] = new QShortcut(
 		QKeySequence("Ctrl+Shift+R"), this,
 		[this]
 		{
-			this->reload_file();
+			this->on_reload_file();
 		});
 
-	shortcuts_[Actions::Save] = new QShortcut(
+	shortcuts_[Actions::Load] = new QShortcut(
 		QKeySequence::Open, this,
 		[this]
 		{
-			this->open_file();
+			this->on_open_file();
 		});
 
 	shortcuts_[Actions::ZoomIn] = new QShortcut(
@@ -172,26 +179,18 @@ void ViewerMainWindow::setup_menubar() {
 		style()->standardIcon(QStyle::SP_FileIcon), "New File",
 		[this]()
 		{
-			this->new_file();
+			this->on_new_file();
 		});
 	toolBar->addAction(
 		style()->standardIcon(QStyle::SP_DialogSaveButton), "Save File",
 		[this]()
 		{
-			this->save();
+			on_save();
 		});
 	toolBar->addAction(
-		style()->standardIcon(QStyle::SP_DialogOpenButton), "Open File",
-		[this]()
-		{
-			this->open_file();
-		});
+		style()->standardIcon(QStyle::SP_DialogOpenButton), "Open File", this, &ViewerMainWindow::on_open_file);
 	toolBar->addAction(
-		style()->standardIcon(QStyle::SP_BrowserReload), "Reload File",
-		[this]()
-		{
-			this->reload_file();
-		});
+		style()->standardIcon(QStyle::SP_BrowserReload), "Reload File", this, &ViewerMainWindow::on_reload_file);
 	toolBar->addSeparator();
 	toolBar->addAction(
 		QIcon::fromTheme("zoom-in", QIcon(":/zoom-plus.svg")), "Zoom In",
@@ -207,43 +206,27 @@ void ViewerMainWindow::setup_menubar() {
 		});
 	// File menu
 	auto* fileMenu = menuBar()->addMenu(tr("File"));
+	fileMenu->addAction(style()->standardIcon(QStyle::SP_FileIcon), "New", this, &ViewerMainWindow::on_new_file);
 	fileMenu->addAction(
-		style()->standardIcon(QStyle::SP_FileIcon), "New",
-		[this]()
-		{
-			this->new_file();
-		});
-	fileMenu->addAction(
-		style()->standardIcon(QStyle::SP_DialogOpenButton), "Open",
-		[this]()
-		{
-			this->open_file();
-		});
+		style()->standardIcon(QStyle::SP_DialogOpenButton), "Open", this, &ViewerMainWindow::on_open_file);
 	fileMenu->addSeparator();
 	fileMenu->addAction(
 		style()->standardIcon(QStyle::SP_DialogSaveButton), "Save",
 		[this]()
 		{
-			document()->save();
+			on_save();
 		});
 	fileMenu->addAction(
 		style()->standardIcon(QStyle::SP_DialogSaveButton), "Save As",
 		[this]()
 		{
-			this->save(true);
+			on_save(true);
 		});
 	fileMenu->addAction(
-		style()->standardIcon(QStyle::SP_BrowserReload), "Reload File",
-		[this]()
-		{
-			this->reload_file();
-		});
+		style()->standardIcon(QStyle::SP_BrowserReload), "Reload File", this, &ViewerMainWindow::on_reload_file);
 	fileMenu->addAction(
-		QIcon::fromTheme("document-import", style()->standardIcon(QStyle::SP_ArrowUp)), "Import File",
-		[this]()
-		{
-			this->import_file();
-		});
+		QIcon::fromTheme("document-import", style()->standardIcon(QStyle::SP_ArrowUp)), "Import File", this,
+		&ViewerMainWindow::on_import_file);
 	fileMenu->addSeparator();
 	fileMenu->addAction(
 		"Exit",
@@ -260,7 +243,7 @@ void ViewerMainWindow::setup_menubar() {
 		{
 			QMessageBox::about(
 				this, tr("About"),
-				"VTFView & vtex2 by Chaos Initiative\n\nBuilt using VTFLib by Neil 'Jed' Jedrzejewski & Ryan Gregg, "
+				"VTFView & vtex2 by Strata Source\n\nBuilt using VTFLib by Neil 'Jed' Jedrzejewski & Ryan Gregg, "
 				"modified by Joshua Ashton");
 		});
 	helpMenu->addAction(
@@ -313,17 +296,27 @@ void ViewerMainWindow::unmark_modified() {
 	document()->unmark_modified();
 }
 
-void ViewerMainWindow::open_file() {
+void ViewerMainWindow::on_open_file() {
 	if (!ask_save())
 		return;
 
-	auto file =
-		QFileDialog::getOpenFileName(this, tr("Open VTF"), QString(), "Valve Texture Format (*.vtf);;All files (*.*)");
+	auto file = QFileDialog::getOpenFileName(this, tr("Open VTF"), QString(), ALL_IMAGE_FILTERS ";;All files (*)");
 	if (file.isEmpty())
 		return;
 
-	if (!document()->load_file(file.toUtf8().data())) {
-		QMessageBox::warning(this, tr("Error"), tr("Could not open file!"));
+	if (file.endsWith(".vtf")) {
+		if (!document()->load_file(file.toUtf8().data())) {
+			QMessageBox::warning(
+				this, tr("Could not open file"),
+				tr("The file '%1' could not be opened. Make sure it's readable and a valid VTF.").arg(file));
+		}
+		return;
+	}
+
+	if (!import_file(file.toUtf8().data())) {
+		QMessageBox::critical(
+			this, tr("Could not open file"),
+			tr("The file '%1' could not be opened. Make sure it's readable and a valid image.").arg(file));
 	}
 }
 
@@ -352,7 +345,7 @@ bool ViewerMainWindow::ask_save() {
 	return true;
 }
 
-void ViewerMainWindow::save(bool saveAs) {
+void ViewerMainWindow::on_save(bool saveAs) {
 	if (!document()->dirty())
 		return;
 
@@ -366,52 +359,56 @@ void ViewerMainWindow::save(bool saveAs) {
 
 	if (!document()->save()) {
 		QMessageBox::warning(
-			this, "Could not save file!", fmt::format(FMT_STRING("Failed to save file: {}"), vlGetLastError()).c_str(),
-			QMessageBox::Ok);
+			this, "Could not save file!",
+			tr("Failed to save '%1': %2").arg(document()->path().data()).arg(vlGetLastError()), QMessageBox::Ok);
 		return;
 	}
 
 	unmark_modified();
 }
 
-void ViewerMainWindow::new_file() {
+void ViewerMainWindow::on_new_file() {
 	if (!ask_save())
 		return;
 
 	document()->new_file();
 }
 
-void ViewerMainWindow::reload_file() {
+void ViewerMainWindow::on_reload_file() {
 	if (!ask_save())
 		return;
 
 	document()->reload_file();
 }
 
-void ViewerMainWindow::import_file() {
-	auto filename =
-		QFileDialog::getOpenFileName(
-			this, tr("Open Image"), QString(), "JPG Files (*.jpg *.jpeg);;PNG Files (*.png);;TGA Files (*.tga)")
-			.toUtf8();
+void ViewerMainWindow::on_import_file() {
+	auto filename = QFileDialog::getOpenFileName(this, tr("Open Image"), QString(), ALL_IMAGE_FILTERS).toUtf8();
 
 	if (filename.isEmpty())
 		return;
 
-	auto image = imglib::Image::load(filename);
-
-	if (!image) {
+	if (!import_file(filename)) {
 		QMessageBox::warning(
-			this, "File does not exist", fmt::format(FMT_STRING("Failed to open image: {}"), filename.data()).c_str(),
-			QMessageBox::Ok);
-		return;
+			this, "File could not be opened",
+			tr( "Failed to open image: %1").arg(filename), QMessageBox::Ok);
 	}
+}
+
+bool ViewerMainWindow::import_file(const char* path) {
+	auto image = imglib::Image::load(path);
+	if (!image)
+		return false;
 
 	auto file = new CVTFFile();
 
 	file->Init(image->width(), image->height(), 1, 1, 1, image->vtf_format());
 	file->SetData(1, 1, 1, 0, image->data<vlByte>());
 
-	document()->load_file(file);
+	if (!document()->load_file(file)) {
+		delete file;
+		return false;
+	}
+	return true;
 }
 
 //////////////////////////////////////////////////////////////////////////////////
