@@ -40,15 +40,19 @@ namespace vtfview
 			return doc_;
 		}
 
-		void save(bool saveAs = false);
-		void open_file();
-		void new_file();
-		void reload_file();
-		void import_file();
+	public slots:
+		void on_save(bool saveAs = false);
+		void on_open_file();
+		void on_new_file();
+		void on_reload_file();
+		void on_import_file();
 
+	public:
 		bool load_file(const char* path) {
 			return document()->load_file(path);
 		}
+
+		bool import_file(const char* path);
 
 		enum Actions {
 			Save,
