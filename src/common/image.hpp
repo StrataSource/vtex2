@@ -64,7 +64,8 @@ namespace imglib
 		~Image();
 
 		static inline std::shared_ptr<Image> load(const std::filesystem::path& path) {
-			return load(path.string().c_str());
+			std::string s = path.string();
+			return load(s.c_str());
 		}
 
 		/**
