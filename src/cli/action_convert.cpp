@@ -287,6 +287,11 @@ bool ActionConvert::process_file(
 	m_width = opts.get<int>(opts::width);
 	m_height = opts.get<int>(opts::height);
 
+	if (!std::filesystem::exists(srcFile)) {
+		std::cerr << "Could not open " << srcFile << ", file does not exist\n";
+		return false;
+	}
+
 	bool isvtf = srcFile.filename().extension() == ".vtf";
 
 	// If an out file name is not provided, we need to build our own
@@ -344,11 +349,7 @@ bool ActionConvert::process_file(
 	}
 	// Add standard image data
 	else if (!add_image_data(srcFile, vtfFile.get(), procFormat, true)) {
-		if (!std::filesystem::exists(srcFile)) {
-			std::cerr << "Could not open " << srcFile << ", file does not exist\n";
-		} else {
-			std::cerr << "Could not add image data from file " << srcFile << "\n";
-		}
+		std::cerr << "Could not add image data from file " << srcFile << "\n";
 		return false;
 	}
 
@@ -588,7 +589,7 @@ bool ActionConvert::add_image_data_raw(
 	if (create) {
 		if (!file->Init(w, h, 1, 1, 1, format, vlTrue, m_mips)) {
 			// +7 so we do not print `Error:\n`, which destroys the formatting
-			std::cerr << "Could not create VTF: " << LastError.Get() + 7 << "\n";
+			std::cerr << "Could not create VTF: " << vlGetLastError() + 7 << "\n";
 			free(dest);
 			return false;
 		}
