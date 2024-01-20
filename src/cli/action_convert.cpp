@@ -49,6 +49,7 @@ namespace opts
 } // namespace opts
 
 static bool get_version_from_str(const std::string& str, int& major, int& minor);
+static const vlChar* get_last_vtflib_error();
 
 std::string ActionConvert::get_help() const {
 	return "Convert a generic image file to VTF";
@@ -372,7 +373,7 @@ bool ActionConvert::process_file(
 
 	// Generate thumbnail
 	if (thumbnail && !vtfFile->GenerateThumbnail(srgb)) {
-		std::cerr << fmt::format("Could not generate thumbnail: {}\n", vlGetLastError());
+		std::cerr << fmt::format("Could not generate thumbnail: {}\n", get_last_vtflib_error());
 		return false;
 	}
 
@@ -390,7 +391,7 @@ bool ActionConvert::process_file(
 
 	// Save to disk finally
 	if (!vtfFile->Save(outFile.string().c_str())) {
-		std::cerr << fmt::format("Could not save file {}: {}\n", outFile.string(), vlGetLastError());
+		std::cerr << fmt::format("Could not save file {}: {}\n", outFile.string(), get_last_vtflib_error());
 		return false;
 	}
 
@@ -575,7 +576,8 @@ bool ActionConvert::add_image_data_raw(
 
 		if (!CVTFFile::Convert((vlByte*)data, dest, w, h, dataFormat, format)) {
 			std::cerr << fmt::format(
-				"Could not convert from {} to {}!\n", NAMEOF_ENUM(dataFormat), NAMEOF_ENUM(format));
+				"Could not convert from {} to {}: {}\n", NAMEOF_ENUM(dataFormat), NAMEOF_ENUM(format),
+				get_last_vtflib_error());
 			free(dest);
 			return false;
 		}
@@ -588,8 +590,7 @@ bool ActionConvert::add_image_data_raw(
 	// This is done here because we don't actually know w/h until now
 	if (create) {
 		if (!file->Init(w, h, 1, 1, 1, format, vlTrue, m_mips)) {
-			// +7 so we do not print `Error:\n`, which destroys the formatting
-			std::cerr << "Could not create VTF: " << vlGetLastError() + 7 << "\n";
+			std::cerr << "Could not create VTF: " << get_last_vtflib_error() << "\n";
 			free(dest);
 			return false;
 		}
@@ -607,4 +608,15 @@ static bool get_version_from_str(const std::string& str, int& major, int& minor)
 	auto majorVer = str.substr(0, pos);
 	auto minorVer = str.substr(pos + 1);
 	return util::strtoint(majorVer, major) && util::strtoint(minorVer, minor);
+}
+
+// Get the last error which occurred in VTFLib
+static const vlChar* get_last_vtflib_error() {
+	auto error = vlGetLastError();
+	if (error) {
+		// +7 so we do not print `Error:\n`, which destroys the formatting
+		return error + 7;
+	}
+
+	return "N/D";
 }
