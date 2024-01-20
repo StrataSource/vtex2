@@ -618,5 +618,5 @@ static const vlChar* get_last_vtflib_error() {
 		return error + 7;
 	}
 
-	return "N/D";
+	return "Unknown error";
 }
