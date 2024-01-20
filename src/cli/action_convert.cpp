@@ -289,7 +289,7 @@ bool ActionConvert::process_file(
 	m_height = opts.get<int>(opts::height);
 
 	if (!std::filesystem::exists(srcFile)) {
-		std::cerr << "Could not open " << srcFile << ", file does not exist\n";
+		std::cerr << "Could not open " << srcFile << ": file does not exist\n";
 		return false;
 	}
 
