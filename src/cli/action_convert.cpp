@@ -385,7 +385,7 @@ bool ActionConvert::process_file(
 
 	// Convert to desired image format
 	if (vtfFile->GetFormat() != format && !vtfFile->ConvertInPlace(format)) {
-		std::cerr << fmt::format("Could not convert image data to {}\n", formatStr);
+		std::cerr << fmt::format("Could not convert image data to {}: {}\n", formatStr, get_last_vtflib_error());
 		return false;
 	}
 
