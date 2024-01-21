@@ -76,4 +76,9 @@ namespace util
 			str[i] = std::tolower(str[i]);
 		return str;
 	}
+
+	/*
+	 * Get the last error which occurred in VTFLib
+	 */
+	const char* get_last_vtflib_error();
 } // namespace util

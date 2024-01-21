@@ -28,6 +28,7 @@ set(COMMON_SRC
 		src/common/image.cpp
 		src/common/enums.cpp
 		src/common/pack.cpp
+		src/common/util.cpp
 		src/common/vtftools.cpp)
 
 add_library(com STATIC ${COMMON_SRC})
