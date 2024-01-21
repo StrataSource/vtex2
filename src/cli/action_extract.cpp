@@ -212,8 +212,8 @@ bool ActionExtract::extract_file(
 
 	if (!ok) {
 		std::cerr << fmt::format(
-			"Could not convert image format '{}' -> '{}'!\n", NAMEOF_ENUM(file_->GetFormat()),
-			destIsFloat ? "RGBA32323232F" : "RGBA8888");
+			"Could not convert image format '{}' -> '{}': {}\n", NAMEOF_ENUM(file_->GetFormat()),
+			destIsFloat ? "RGBA32323232F" : "RGBA8888", util::get_last_vtflib_error());
 		return false;
 	}
 
@@ -249,7 +249,7 @@ bool ActionExtract::load_vtf(const std::filesystem::path& vtfFile) {
 	// Create new file & load it with vtflib
 	file_ = new VTFLib::CVTFFile();
 	if (!file_->Load(buf, numBytes, false)) {
-		std::cerr << fmt::format("Failed to load VTF '{}': {}\n", vtfFile.string(), vlGetLastError());
+		std::cerr << fmt::format("Failed to load VTF '{}': {}\n", vtfFile.string(), util::get_last_vtflib_error());
 		return false;
 	}
 

@@ -480,7 +480,7 @@ bool ActionPack::save_vtf(
 	initOpts.uiWidth = image->width();
 	initOpts.uiSlices = 1;
 	if (!file_->Init(initOpts)) {
-		std::cerr << fmt::format("Error while saving VTF: {}\n", vlGetLastError());
+		std::cerr << fmt::format("Error while saving VTF: {}\n", util::get_last_vtflib_error());
 		return false; // Cleanup done in cleanup()
 	}
 	file_->SetData(0, 0, 0, 0, image->data<vlByte>());

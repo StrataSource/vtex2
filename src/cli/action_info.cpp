@@ -77,7 +77,7 @@ int ActionInfo::exec(const OptionList& opts) {
 	// Load VTF with vtflib
 	file_ = new VTFLib::CVTFFile();
 	if (!file_->Load(buf, numBytes, false)) {
-		std::cerr << fmt::format(FMT_STRING("Failed to load VTF '{}': {}\n"), file, vlGetLastError());
+		std::cerr << fmt::format(FMT_STRING("Failed to load VTF '{}': {}\n"), file, util::get_last_vtflib_error());
 		return 1;
 	}
 

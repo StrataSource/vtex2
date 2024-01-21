@@ -287,6 +287,11 @@ bool ActionConvert::process_file(
 	m_width = opts.get<int>(opts::width);
 	m_height = opts.get<int>(opts::height);
 
+	if (!std::filesystem::exists(srcFile)) {
+		std::cerr << "Could not open " << srcFile << ": file does not exist\n";
+		return false;
+	}
+
 	bool isvtf = srcFile.filename().extension() == ".vtf";
 
 	// If an out file name is not provided, we need to build our own
@@ -367,7 +372,7 @@ bool ActionConvert::process_file(
 
 	// Generate thumbnail
 	if (thumbnail && !vtfFile->GenerateThumbnail(srgb)) {
-		std::cerr << fmt::format("Could not generate thumbnail: {}\n", vlGetLastError());
+		std::cerr << fmt::format("Could not generate thumbnail: {}\n", util::get_last_vtflib_error());
 		return false;
 	}
 
@@ -379,13 +384,13 @@ bool ActionConvert::process_file(
 
 	// Convert to desired image format
 	if (vtfFile->GetFormat() != format && !vtfFile->ConvertInPlace(format)) {
-		std::cerr << fmt::format("Could not convert image data to {}\n", formatStr);
+		std::cerr << fmt::format("Could not convert image data to {}: {}\n", formatStr, util::get_last_vtflib_error());
 		return false;
 	}
 
 	// Save to disk finally
 	if (!vtfFile->Save(outFile.string().c_str())) {
-		std::cerr << fmt::format("Could not save file {}: {}\n", outFile.string(), vlGetLastError());
+		std::cerr << fmt::format("Could not save file {}: {}\n", outFile.string(), util::get_last_vtflib_error());
 		return false;
 	}
 
@@ -570,7 +575,8 @@ bool ActionConvert::add_image_data_raw(
 
 		if (!CVTFFile::Convert((vlByte*)data, dest, w, h, dataFormat, format)) {
 			std::cerr << fmt::format(
-				"Could not convert from {} to {}!\n", NAMEOF_ENUM(dataFormat), NAMEOF_ENUM(format));
+				"Could not convert from {} to {}: {}\n", NAMEOF_ENUM(dataFormat), NAMEOF_ENUM(format),
+				util::get_last_vtflib_error());
 			free(dest);
 			return false;
 		}
@@ -583,7 +589,7 @@ bool ActionConvert::add_image_data_raw(
 	// This is done here because we don't actually know w/h until now
 	if (create) {
 		if (!file->Init(w, h, 1, 1, 1, format, vlTrue, m_mips)) {
-			std::cerr << "Could not create VTF.\n";
+			std::cerr << "Could not create VTF: " << util::get_last_vtflib_error() << "\n";
 			free(dest);
 			return false;
 		}
