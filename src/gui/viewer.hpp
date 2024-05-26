@@ -136,20 +136,22 @@ namespace vtfview
 		void paintEvent(QPaintEvent* event) override;
 
 		void set_frame(int f) {
-			frame_ = util::clamp(f, 1, file_ ? file_->GetFrameCount() : 1);
+			frame_ = file_ ? util::clamp(f, 1, file_->GetFrameCount()) : 1;
+			frame_--;
 			repaint();
 		}
 
 		void set_face(int f) {
-			face_ = util::clamp(f, 1, file_ ? file_->GetFaceCount() : 1);
+			face_ = file_ ? util::clamp(f, 1, file_->GetFaceCount()) : 1;
+			face_--;
 			repaint();
 		}
 
 		// Sets the current mip
 		// This is in the range 1-mipcount, in vtflib it's 0-based index
 		void set_mip(int f) {
-			mip_ = util::clamp(f, 1, file_ ? file_->GetMipmapCount() : 1);
-			mip_ -= 1;
+			mip_ = file_ ? util::clamp(f, 1, file_->GetMipmapCount()) : 1;
+			mip_--;
 			repaint();
 		}
 
