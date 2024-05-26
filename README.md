@@ -98,7 +98,7 @@ Options:
 The first step is to clone the repository. Make sure to do a recursive clone!
 
 ```
-git clone https://github.com/ChaosInitiative/vtex2.git --recursive
+git clone https://github.com/StrataSource/vtex2.git --recursive
 ```
 
 ### Linux
