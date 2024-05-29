@@ -98,51 +98,40 @@ jobs:
     if: github.ref_name == 'main'
     steps:
 
-    # Get the artifacts from previous stages 
-    - uses: actions/download-artifact@master
+    - name: Download Artifacts
+      uses: actions/github-script@v7
       with:
-       name: vtex2.windows-amd64
-
-    - uses: actions/download-artifact@master
-      with:
-       name: vtex2.linux-amd64
+          script: |
+              const artifacts = (await github.rest.actions.listWorkflowRunArtifacts({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                run_id: ${{github.run_id}},
+              })).data.artifacts;
+              console.log(`Found ${artifacts.length} artifacts.`);
+              for (const artifact of artifacts) {
+                console.log(`Downloading "${artifact.name}.zip"...`);
+                let download = await github.rest.actions.downloadArtifact({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  artifact_id: artifact.id,
+                  archive_format: 'zip',
+                });
+                let fs = require('fs');
+                fs.writeFileSync(`${{github.workspace}}/${artifact.name}.zip`, Buffer.from(download.data));
+              }
+              console.log("Artifact download complete!");
 
     - run: ls -R
-    
+
     - name: Store SHA
       run: echo "GH_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
-    # Draft a release
     - name: Draft Release
-      uses: actions/create-release@v1
-      id: create_release
+      uses: softprops/action-gh-release@v2
       with:
+        name: vtex2 - ${{github.sha}}
+        files: |
+            vtex2.linux-amd64.zip
+            vtex2.windows-amd64.zip
         draft: true
         prerelease: true
-        release_name: vtex2 - ${{github.sha}}
-        tag_name: ${{github.ref}}
-      env:
-        GITHUB_TOKEN: ${{github.token}}
-
-    # Upload the linux artifacts
-    - name: Upload Linux Artifacts
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{github.token}}
-      with:
-        upload_url: ${{steps.create_release.outputs.upload_url}}
-        asset_path: ./vtex2.linux-amd64.zip
-        asset_name: vtex2.linux-amd64.zip
-        asset_content_type: application/zip
-
-    # Upload the windows artifacts
-    - name: Upload Windows Artifacts
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{github.token}}
-      with:
-        upload_url: ${{steps.create_release.outputs.upload_url}}
-        asset_path: ./vtex2.windows-amd64.zip
-        asset_name: vtex2.windows-amd64.zip
-        asset_content_type: application/zip
-
