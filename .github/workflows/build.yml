@@ -11,13 +11,12 @@ jobs:
     runs-on: ubuntu-20.04
 
     steps:
-    - uses: actions/checkout@v3
-
-    - name: submodules-init
-      uses: snickerbockers/submodules-init@v4
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
 
     - name: Install Qt6
-      uses: jurplel/install-qt-action@v3
+      uses: jurplel/install-qt-action@v4
       with:
         version: ${{env.QT_VERSION}}
         archives: 'qtbase qtsvg'
@@ -28,72 +27,58 @@ jobs:
         tar -xvf icu4c-56_1-RHEL6-x64.tgz
 
     - name: Generate
-      working-directory: ${{github.workspace}}
-      run: cmake . -DCMAKE_BUILD_TYPE=Release -DQT_BASEDIR=$Qt6_DIR -B ./build
-    
+      run: cmake . -DCMAKE_BUILD_TYPE=Release -DQT_BASEDIR=$QT_ROOT_DIR -B ./build
+
     - name: Build
-      working-directory: ${{github.workspace}}
       run: |
         export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:$PWD/usr/local/lib"
         echo $LD_LIBRARY_PATH
         cmake --build ./build
-    
-    - name: Package Artifacts
-      run: |
-       cd build
-       zip ../vtex2.linux-amd64.zip vtex2 vtfview
 
     - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v2.2.2
+      uses: actions/upload-artifact@v4
       with:
         name: vtex2.linux-amd64
-        path: vtex2.linux-amd64.zip
+        path: |
+            build/vtex2
+            build/vtfview
         if-no-files-found: warn
 
-  # Windows build + artifact upload
   build-windows:
     runs-on: windows-latest
-    strategy:
-          matrix:
-            build_config: ["Release"]
-            
     steps:
-    - uses: actions/checkout@v3
-    
-    - name: submodules-init
-      uses: snickerbockers/submodules-init@v4
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
 
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v1
 
     - name: Install Qt6
-      uses: jurplel/install-qt-action@v3
+      uses: jurplel/install-qt-action@v4
       with:
         version: ${{env.QT_VERSION}}
         archives: 'qtbase qtsvg'
 
     - name: Generate Solution
-      working-directory: ${{github.workspace}}
-      run: cmake . -G "Visual Studio 17 2022" -DQT_BASEDIR=$Qt6_DIR -B build
+      run: cmake . -G "Visual Studio 17 2022" -DQT_BASEDIR=$QT_ROOT_DIR -B build
 
     - name: Build
-      working-directory: ${{env.GITHUB_WORKSPACE}}
-      run: msbuild /m /p:Configuration=${{matrix.build_config}} build\vtex2.sln
-
-    - name: Package Artifacts
-      run: |
-       Get-ChildItem -Path build\Release\vtex2.exe, build\Release\vtfview.exe | Compress-Archive -DestinationPath vtex2.windows-amd64.zip
+      run: msbuild /m /p:Configuration=Release build\vtex2.sln
 
     - name: Upload a Build Artifact
-      uses: actions/upload-artifact@v2.2.2
+      uses: actions/upload-artifact@v4
       with:
         name: vtex2.windows-amd64
-        path: vtex2.windows-amd64.zip
+        path: |
+            build/Release/vtex2.exe
+            build/Release/vtfview.exe
         if-no-files-found: warn
 
-  # Release draft + artifact upload
   draft-release:
-    needs: [build-windows, build-linux]
+    needs:
+      - build-windows
+      - build-linux
     runs-on: ubuntu-latest
     if: github.ref_name == 'main'
     steps:
@@ -122,9 +107,6 @@ jobs:
               console.log("Artifact download complete!");
 
     - run: ls -R
-
-    - name: Store SHA
-      run: echo "GH_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
     - name: Draft Release
       uses: softprops/action-gh-release@v2
