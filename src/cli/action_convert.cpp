@@ -283,6 +283,9 @@ bool ActionConvert::process_file(
 
 	auto nomips = opts.get<bool>(opts::nomips);
 	m_mips = nomips ? 1 : std::max(opts.get<int>(opts::mips), 1);
+	// If mips is not provided, we'll use a default later on
+	if (!opts.has(opts::mips) && !nomips)
+		m_mips = -1;
 
 	m_width = opts.get<int>(opts::width);
 	m_height = opts.get<int>(opts::height);
@@ -588,7 +591,7 @@ bool ActionConvert::add_image_data_raw(
 	// Create the file if we're told to do so
 	// This is done here because we don't actually know w/h until now
 	if (create) {
-		if (!file->Init(w, h, 1, 1, 1, format, vlTrue, m_mips)) {
+		if (!file->Init(w, h, 1, 1, 1, format, vlTrue, m_mips <= 0 ? CVTFFile::ComputeMipmapCount(w, h, 1) : m_mips)) {
 			std::cerr << "Could not create VTF: " << util::get_last_vtflib_error() << "\n";
 			free(dest);
 			return false;
