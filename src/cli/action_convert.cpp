@@ -225,7 +225,7 @@ const OptionList& ActionConvert::get_options() const {
 				.short_opt("-gl")
 				.value(false)
 				.type(OptType::Bool)
-				.help("Treat the incoming normal map as a OpenGL normal map"));
+				.help("Treat the incoming normal map as an OpenGL normal map"));
 	};
 	return opts;
 }

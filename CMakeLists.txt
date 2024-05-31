@@ -87,3 +87,24 @@ install(TARGETS vtex2)
 if (BUILD_GUI)
 	install(TARGETS vtfview)
 endif()
+
+##############################
+# Version header
+##############################
+find_package(Git)
+
+include_directories("${CMAKE_BINARY_DIR}/src")
+
+execute_process(
+	COMMAND ${GIT_EXECUTABLE} describe --tags --match "v*"
+	WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"
+	OUTPUT_VARIABLE VTEX2_VERSION
+	RESULT_VARIABLE GITD_RESULT
+	OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+if (GITD_RESULT)
+	set(VTEX2_VERSION "UNKNOWN")
+endif()
+
+configure_file(src/common/vtex2_version.h.in src/common/vtex2_version.h)
