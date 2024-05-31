@@ -23,3 +23,5 @@ cmake-build-*/
 
 *.vtf
 .cache
+
+compile_commands.json
