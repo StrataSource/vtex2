@@ -1,5 +1,7 @@
 #include "viewer.hpp"
 
+#include "common/vtex2_version.h"
+
 #include "common/enums.hpp"
 #include "common/image.hpp"
 #include "common/util.hpp"
@@ -243,8 +245,8 @@ void ViewerMainWindow::setup_menubar() {
 		{
 			QMessageBox::about(
 				this, tr("About"),
-				"VTFView & vtex2 by Strata Source\n\nBuilt using VTFLib by Neil 'Jed' Jedrzejewski & Ryan Gregg, "
-				"modified by Joshua Ashton");
+				QString("VTFView %1\nvtex2 %1\n\nCopyright (C) 2024, Strata Source Contributors\n\nBuilt using VTFLib by Neil 'Jed' Jedrzejewski & Ryan Gregg, "
+				"modified by Joshua Ashton").arg(VTEX2_VERSION));
 		});
 	helpMenu->addAction(
 		"About Qt",
