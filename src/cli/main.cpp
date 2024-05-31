@@ -7,6 +7,8 @@
 
 #include "fmt/format.h"
 
+#include "common/vtex2_version.h"
+
 #include "action.hpp"
 #include "action_info.hpp"
 #include "action_extract.hpp"
@@ -30,6 +32,7 @@ static bool arg_compare(const char* arg, const char* argname);
 
 [[noreturn]] static void show_help(int exitCode = 0);
 [[noreturn]] static void show_action_help(BaseAction* action, int exitCode = 0);
+[[noreturn]] static void show_version();
 
 int main(int argc, char** argv) {
 	bool parsingAction = false;
@@ -118,6 +121,8 @@ int main(int argc, char** argv) {
 		else {
 			if (!std::strcmp(arg, "-?") || !std::strcmp("--help", arg))
 				show_help(0);
+			else if (!std::strcmp(arg, "--version"))
+				show_version();
 		}
 	}
 
@@ -279,18 +284,24 @@ static bool arg_compare(const char* arg, const char* argname) {
 	return false;
 }
 
-void show_help(int exitCode) {
+static void show_help(int exitCode) {
 	std::cout
 		<< "USAGE: vtex2 [OPTIONS] ACTION [ARGS]...\n"
 		<< "\n  Command line utility to modify, convert and show info about Valve Texture Files.\n"
 		<< "\nOptions:\n";
 	fmt::print("  {:<32} - Display this help text\n", "-?,--help");
+	fmt::print("  {:<32} - Display version info\n", "--version");
 	std::cout << "\nCommands:\n";
 	for (auto& a : s_actions) {
 		fmt::print("  {} - {}\n", a->get_name().c_str(), a->get_help().c_str());
 	}
 	std::cout << std::endl;
 	exit(exitCode);
+}
+
+static void show_version() {
+	fmt::print("vtex2 version {}\n", VTEX2_VERSION);
+	exit(0);
 }
 
 void show_action_help(BaseAction* action, int exitCode) {
