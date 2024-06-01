@@ -80,7 +80,7 @@ jobs:
       - build-windows
       - build-linux
     runs-on: ubuntu-latest
-    if: github.ref_name == 'main'
+    if: contains(github.ref, 'refs/tags/')
     steps:
 
     - name: Download Artifacts
