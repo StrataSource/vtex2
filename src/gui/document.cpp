@@ -108,6 +108,9 @@ bool Document::load_file_internal(const void* data, size_t size) {
 }
 
 void Document::set_format(VTFImageFormat format) {
+	if (!file_)
+		return;
+
 	if (format == file_->GetFormat()) {
 		format_ = IMAGE_FORMAT_NONE;
 		return;
