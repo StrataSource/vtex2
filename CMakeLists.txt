@@ -86,6 +86,17 @@ install(TARGETS vtex2)
 
 if (BUILD_GUI)
 	install(TARGETS vtfview)
+
+	install(
+		FILES ${CMAKE_BINARY_DIR}/vtfview.desktop
+		DESTINATION share/applications
+	)
+	
+	install(
+		FILES res/icon.png
+		DESTINATION share/icons
+		RENAME vtfview.png
+	)
 endif()
 
 ##############################
@@ -108,3 +119,5 @@ if (GITD_RESULT)
 endif()
 
 configure_file(src/common/vtex2_version.h.in src/common/vtex2_version.h)
+
+configure_file(install/vtfview.desktop.in ${CMAKE_BINARY_DIR}/vtfview.desktop)

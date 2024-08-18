@@ -1,0 +1,8 @@
+[Desktop Entry]
+Version=${VTEX2_VERSION}
+Name=vtfview
+Comment=Viewer for Valve Texture Files (VTF)
+Exec=${CMAKE_INSTALL_PREFIX}/bin/vtfview %f
+Icon=vtfview.png
+Type=Application
+Categories=Utility;Development;
