@@ -1,0 +1,6 @@
+Diagnostics:
+  ClangTidy:
+    Add: [bugprone-sus*, modernize-use-nullptr, modernize-use-override, modernize-use-using, misc-static-assert, misc-redundant-expression,
+      modernize-macro-to-enum, performance-*, modernize-use-equals-*, modernize-use-bool-literals, readability-simplify-boolean-expr,
+	  readability-reference-to-constructed-temporary, readability-redundant-*]
+  UnusedIncludes: None
