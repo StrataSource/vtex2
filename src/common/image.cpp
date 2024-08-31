@@ -2,6 +2,7 @@
 #include "image.hpp"
 #include "util.hpp"
 #include "strtools.hpp"
+#include "lwiconv.hpp"
 
 #include <cstring>
 #include <cassert>
@@ -52,16 +53,16 @@ Image::~Image() {
 		free(m_data);
 }
 
-std::shared_ptr<Image> Image::load(const char* path) {
+std::shared_ptr<Image> Image::load(const char* path, ChannelType convertOnLoad) {
 	FILE* fp = fopen(path, "rb");
 	if (!fp)
 		return nullptr;
-	auto img = load(fp);
+	auto img = load(fp, convertOnLoad);
 	fclose(fp);
 	return img;
 }
 
-std::shared_ptr<Image> Image::load(FILE* fp) {
+std::shared_ptr<Image> Image::load(FILE* fp, ChannelType convertOnLoad) {
 	auto info = image_info(fp);
 	auto image = std::make_shared<Image>();
 	if (info.type == ChannelType::Float) {
@@ -73,9 +74,15 @@ std::shared_ptr<Image> Image::load(FILE* fp) {
 	else {
 		image->m_data = stbi_load_from_file(fp, &image->m_width, &image->m_height, &image->m_comps, info.comps);
 	}
+	image->m_type = info.type;
 
 	if (!image->m_data)
 		return nullptr;
+
+	if (convertOnLoad != ChannelType::None && convertOnLoad != info.type)
+		if (!image->convert(convertOnLoad))
+			return nullptr;	// Convert on load failed
+
 	return image;
 }
 
@@ -94,10 +101,10 @@ bool Image::save(const char* file, FileFormat format) {
 		// Convert if necessary. Needs to be float for HDR
 		auto* dataToUse = m_data;
 		bool dataIsOurs = false;
-		if (m_type != Float) {
+		if (m_type != ChannelType::Float) {
 			dataToUse = malloc(m_width * m_height * sizeof(float) * m_comps);
 			dataIsOurs = true;
-			if (!convert_formats(m_data, dataToUse, m_type, Float, m_comps, m_width, m_height)) {
+			if (!convert_formats(m_data, dataToUse, m_type, ChannelType::Float, m_width, m_height, m_comps, m_comps, pixel_size(), imglib::pixel_size(ChannelType::Float, m_comps))) {
 				free(dataToUse);
 				return false;
 			}
@@ -112,10 +119,10 @@ bool Image::save(const char* file, FileFormat format) {
 		// Convert to RGBX8 if not already in that format - required for the other writers
 		auto* dataToUse = m_data;
 		bool dataIsOurs = false;
-		if (m_type != UInt8) {
+		if (m_type != ChannelType::UInt8) {
 			dataToUse = malloc(m_width * m_height * sizeof(uint8_t) * m_comps);
 			dataIsOurs = true;
-			if (!convert_formats(m_data, dataToUse, m_type, UInt8, m_comps, m_width, m_height)) {
+			if (!convert_formats(m_data, dataToUse, m_type, ChannelType::UInt8, m_width, m_height, m_comps, m_comps, pixel_size(), imglib::pixel_size(ChannelType::UInt8, m_comps))) {
 				free(dataToUse);
 				return false;
 			}
@@ -157,10 +164,10 @@ bool Image::resize(int newW, int newH) {
 
 VTFImageFormat Image::vtf_format() const {
 	switch (m_type) {
-		case imglib::UInt16:
-			// @TODO: How to handle RGBA16? DONT i guess
-			return IMAGE_FORMAT_RGBA16161616F;
-		case imglib::Float:
+		case ChannelType::UInt16:
+			// @TODO: How to handle RGB16? DONT i guess
+			return IMAGE_FORMAT_RGBA16161616;
+		case ChannelType::Float:
 			return (m_comps == 3) ? IMAGE_FORMAT_RGB323232F
 								  : (m_comps == 1 ? IMAGE_FORMAT_R32F : IMAGE_FORMAT_RGBA32323232F);
 		default:
@@ -172,10 +179,10 @@ bool imglib::resize(
 	void* indata, void** useroutdata, ChannelType srcType, int comps, int w, int h, int newW, int newH) {
 	stbir_datatype type;
 	switch (srcType) {
-		case Float:
+		case ChannelType::Float:
 			type = STBIR_TYPE_FLOAT;
 			break;
-		case UInt16:
+		case ChannelType::UInt16:
 			type = STBIR_TYPE_UINT16;
 			break;
 		default:
@@ -215,36 +222,45 @@ size_t imglib::bytes_for_image(int w, int h, ChannelType type, int comps) {
 	return w * h * comps * bpc;
 }
 
-template <int COMPS>
 bool convert_formats_internal(
-	const void* srcData, void* dstData, ChannelType srcChanType, ChannelType dstChanType, int w, int h) {
-	static_assert(COMPS > 0 && COMPS <= 4, "Comps is out of range");
+	const void* srcData, void* dstData, ChannelType srcChanType, ChannelType dstChanType, int w, int h, int inComps, int outComps, int inStride, int outStride, const lwiconv::PixelF& pdef) {
 
-	if (srcChanType == UInt8) {
+	if (srcChanType == ChannelType::UInt8) {
 		// RGBX32
-		if (dstChanType == Float)
-			convert_8_to_32<COMPS>(srcData, dstData, w, h);
+		if (dstChanType == ChannelType::Float)
+			lwiconv::convert_generic<uint8_t, float>(srcData, dstData, w, h, inComps, outComps, inStride, outStride, pdef);
 		// RGBX16
-		else if (dstChanType == UInt16)
-			convert_8_to_16<COMPS>(srcData, dstData, w, h);
+		else if (dstChanType == ChannelType::UInt16)
+			lwiconv::convert_generic<uint8_t, uint16_t>(srcData, dstData, w, h, inComps, outComps, inStride, outStride, pdef);
+		// RGBX8 (just adding/removing channel(s))
+		else if (dstChanType == ChannelType::UInt8)
+			lwiconv::convert_generic<uint8_t, uint8_t>(srcData, dstData, w, h, inComps, outComps, inStride, outStride, pdef);
 		return true;
 	}
 	// RGBX32 -> RGBX[8|16]
-	else if (srcChanType == Float) {
+	else if (srcChanType == ChannelType::Float) {
 		// RGBX16
-		if (dstChanType == UInt16)
-			convert_32_to_16<COMPS>(srcData, dstData, w, h);
+		if (dstChanType == ChannelType::UInt16)
+			lwiconv::convert_generic<float, uint16_t>(srcData, dstData, w, h, inComps, outComps, inStride, outStride, pdef);
 		// RGBX8
-		else if (dstChanType == UInt8)
-			convert_32_to_8<COMPS>(srcData, dstData, w, h);
+		else if (dstChanType == ChannelType::UInt8)
+			lwiconv::convert_generic<float, uint8_t>(srcData, dstData, w, h, inComps, outComps, inStride, outStride, pdef);
+		// RGBX32 (just adding/removing channel(s))
+		else if (dstChanType == ChannelType::Float)
+			lwiconv::convert_generic<float, float>(srcData, dstData, w, h, inComps, outComps, inStride, outStride, pdef);
 		return true;
 	}
-	// RGBX16
-	else if (srcChanType == UInt16) {
-		if (dstChanType == UInt8)
-			convert_16_to_8<COMPS>(srcData, dstData, w, h);
-		else if (dstChanType == Float)
-			convert_16_to_32<COMPS>(srcData, dstData, w, h);
+	// RGBX16 -> RGBX[8|32F]
+	else if (srcChanType == ChannelType::UInt16) {
+		// RGBX8
+		if (dstChanType == ChannelType::UInt8)
+			lwiconv::convert_generic<uint16_t, uint8_t>(srcData, dstData, w, h, inComps, outComps, inStride, outStride, pdef);
+		// RGBX32
+		else if (dstChanType == ChannelType::Float)
+			lwiconv::convert_generic<uint16_t, float>(srcData, dstData, w, h, inComps, outComps, inStride, outStride, pdef);
+		// RGBX16 (just adding/removing channel(s))
+		else if (dstChanType == ChannelType::UInt16)
+			lwiconv::convert_generic<uint16_t, uint16_t>(srcData, dstData, w, h, inComps, outComps, inStride, outStride, pdef);
 		return true;
 	}
 
@@ -252,26 +268,19 @@ bool convert_formats_internal(
 }
 
 bool imglib::convert_formats(
-	const void* srcData, void* dstData, ChannelType srcChanType, ChannelType dstChanType, int comps, int w, int h) {
+	const void* srcData, void* dstData, ChannelType srcChanType, ChannelType dstChanType, int w, int h, int inComps, int outComps, int inStride, int outStride, const lwiconv::PixelF& pdef) {
 	// No conv needed
-	if (srcChanType == dstChanType)
+	if (srcChanType == dstChanType && inComps == outComps)
 		return true;
 
-	if (comps == 4)
-		return convert_formats_internal<4>(srcData, dstData, srcChanType, dstChanType, w, h);
-	else if (comps == 3)
-		return convert_formats_internal<3>(srcData, dstData, srcChanType, dstChanType, w, h);
-	else if (comps == 2)
-		return convert_formats_internal<2>(srcData, dstData, srcChanType, dstChanType, w, h);
-	else if (comps == 1)
-		return convert_formats_internal<1>(srcData, dstData, srcChanType, dstChanType, w, h);
-	return false;
+	return convert_formats_internal(srcData, dstData, srcChanType, dstChanType, w, h, inComps, outComps, inStride, outStride, pdef);
 }
 
-bool Image::convert(ChannelType dstChanType) {
-	void* dst = malloc(imglib::bytes_for_image(m_width, m_height, m_type, m_comps));
+bool Image::convert(ChannelType dstChanType, int channels, const lwiconv::PixelF& pdef) {
+	channels = channels <= 0 ? m_comps : channels;
+	void* dst = malloc(imglib::bytes_for_image(m_width, m_height, m_type, channels));
 
-	if (!convert_formats(m_data, dst, m_type, dstChanType, m_comps, m_width, m_height)) {
+	if (!convert_formats(m_data, dst, m_type, dstChanType, m_width, m_height, m_comps, channels, pixel_size(), channels * channel_size(dstChanType), pdef)) {
 		free(dst);
 		return false;
 	}
@@ -303,11 +312,11 @@ static bool process_image_internal(void* indata, int comps, int w, int h, ProcFl
 
 bool Image::process(ProcFlags flags) {
 	switch (m_type) {
-		case UInt8:
+		case ChannelType::UInt8:
 			return process_image_internal<uint8_t>(m_data, m_comps, m_width, m_height, flags);
-		case UInt16:
+		case ChannelType::UInt16:
 			return process_image_internal<uint16_t>(m_data, m_comps, m_width, m_height, flags);
-		case Float:
+		case ChannelType::Float:
 			return process_image_internal<float>(m_data, m_comps, m_width, m_height, flags);
 		default:
 			assert(0);
@@ -373,4 +382,22 @@ static ImageInfo_t image_info(FILE* fp) {
 		info.type = ChannelType::UInt8;
 
 	return info;
+}
+
+size_t imglib::pixel_size(ChannelType type, int channels) {
+	return channels * channel_size(type);
+}
+
+size_t imglib::channel_size(ChannelType type) {
+	switch(type) {
+	case imglib::ChannelType::UInt8:
+		return 1;
+	case imglib::ChannelType::UInt16:
+		return 2;
+	case imglib::ChannelType::Float:
+		return 4;
+	default:
+		assert(0);
+		return 1;
+	}
 }

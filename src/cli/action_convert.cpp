@@ -319,15 +319,15 @@ bool ActionConvert::process_file(
 			std::max(formatInfo.uiRedBitsPerPixel, formatInfo.uiGreenBitsPerPixel),
 			std::max(formatInfo.uiBlueBitsPerPixel, formatInfo.uiAlphaBitsPerPixel));
 		if (maxBpp > 16) {
-			procChanType = imglib::Float;
+			procChanType = imglib::ChannelType::Float;
 			return IMAGE_FORMAT_RGBA32323232F;
 		}
 		else if (maxBpp > 8) {
-			procChanType = imglib::UInt16;
-			return IMAGE_FORMAT_RGBA16161616F;
+			procChanType = imglib::ChannelType::UInt16;
+			return IMAGE_FORMAT_RGBA16161616;
 		}
 		else {
-			procChanType = imglib::UInt8;
+			procChanType = imglib::ChannelType::UInt8;
 			return IMAGE_FORMAT_RGBA8888;
 		}
 	}();
@@ -519,6 +519,14 @@ bool ActionConvert::add_image_data(
 	if (m_height != -1 && m_width != -1) {
 		if (!image->resize(m_width, m_height))
 			return false;
+	}
+
+	// Hack for VTFLib; Ensure we have an alpha channel because that's well supported in that horrible code
+	if (image->channels() < 4 && image->type() != imglib::ChannelType::UInt8) {
+		if (!image->convert(image->type(), 4)) {
+			std::cerr << fmt::format("Failed to convert {}\n", imageSrc.c_str());
+			return false;
+		}
 	}
 
 	// Add the raw image data

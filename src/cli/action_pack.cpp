@@ -212,7 +212,7 @@ int ActionPack::exec(const OptionList& opts) {
 //
 static std::shared_ptr<imglib::Image> load_image(const std::filesystem::path& path) {
 
-	auto img = imglib::Image::load(path);
+	auto img = imglib::Image::load(path); // Force UInt8 for packed images
 	if (!img)
 		std::cerr << fmt::format("Could not load image '{}'\n", path.string());
 	return img;
@@ -236,20 +236,23 @@ static void determine_size(int* w, int* h, const std::shared_ptr<imglib::Image> 
 //
 // Resize images if required and converts too!
 //
-static void resize_if_required(const std::shared_ptr<imglib::Image>& image, int w, int h) {
+static bool resize_if_required(const std::shared_ptr<imglib::Image>& image, int w, int h) {
 	if (!image)
-		return;
+		return true;
 
 	// @TODO: For now we're just going to force 8 bit per channel.
 	//  Sometimes we do get 16bpc images, mainly for height data, but we're cramming that into a RGBA8888 texture
 	//  anyways. It'd be best to eventually support RGBA16F normals for instances where you need precise height data.
-	if (image->type() != imglib::UInt8) {
-		assert(image->convert(imglib::UInt8));
+	if (image->type() != imglib::ChannelType::UInt8) {
+		if (!image->convert(imglib::ChannelType::UInt8)) {
+			std::cerr << "Failed to convert image\n";
+			return false;
+		}
 	}
 
 	if (image->width() == w && image->height() == h)
-		return;
-	assert(image->resize(w, h));
+		return true;
+	return image->resize(w, h);
 }
 
 //
@@ -296,10 +299,14 @@ bool ActionPack::pack_mrao(
 	}
 
 	// Resize images if required
-	resize_if_required(roughnessData, w, h);
-	resize_if_required(metalnessData, w, h);
-	resize_if_required(aoData, w, h);
-	resize_if_required(tmaskData, w, h);
+	if (!resize_if_required(roughnessData, w, h))
+		return false;
+	if (!resize_if_required(metalnessData, w, h))
+		return false;
+	if (!resize_if_required(aoData, w, h))
+		return false;
+	if (!resize_if_required(tmaskData, w, h))
+		return false;
 
 	// Packing config
 	pack::ChannelPack_t pack[] = {
@@ -400,8 +407,10 @@ bool ActionPack::pack_normal(
 	}
 
 	// Resize images if required
-	resize_if_required(normalData, w, h);
-	resize_if_required(heightData, w, h);
+	if (!resize_if_required(normalData, w, h))
+		return false;
+	if (!resize_if_required(heightData, w, h))
+		return false;
 
 	// Convert normal to DX if necessary
 	if (isGL)
