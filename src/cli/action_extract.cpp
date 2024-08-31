@@ -24,6 +24,7 @@ namespace opts
 	static int mip;
 	static int recursive;
 	static int noalpha;
+	static int quiet;
 } // namespace opts
 
 std::string ActionExtract::get_help() const {
@@ -82,6 +83,15 @@ const OptionList& ActionExtract::get_options() const {
 				.type(OptType::Bool)
 				.value(false)
 				.help("Exclude alpha channel from converted image"));
+
+		opts::quiet = opts.add(
+			ActionOption()
+				.short_opt("-q")
+				.long_opt("--quiet")
+				.type(OptType::Bool)
+				.value(false)
+				.help("Silence output messages that aren't errors")
+		);
 	};
 	return opts;
 }
@@ -152,7 +162,8 @@ bool ActionExtract::extract_file(
 		outFile = vtfPath.parent_path() / vtfPath.filename().replace_extension(ext);
 	}
 
-	fmt::print("{} -> {}\n", vtfPath.string(), outFile.string());
+	if (!opts.get<bool>(opts::quiet))
+		fmt::print("{} -> {}\n", vtfPath.string(), outFile.string());
 
 	// Validate mipmap selection
 	if (mip > file_->GetMipmapCount()) {

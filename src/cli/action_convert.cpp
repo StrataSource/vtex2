@@ -46,6 +46,7 @@ namespace opts
 	static int width, height;
 	static int nomips;
 	static int toDX;
+	static int quiet;
 } // namespace opts
 
 static bool get_version_from_str(const std::string& str, int& major, int& minor);
@@ -226,6 +227,15 @@ const OptionList& ActionConvert::get_options() const {
 				.value(false)
 				.type(OptType::Bool)
 				.help("Treat the incoming normal map as an OpenGL normal map"));
+
+		opts::quiet = opts.add(
+			ActionOption()
+				.long_opt("--quiet")
+				.short_opt("-q")
+				.value(false)
+				.type(OptType::Bool)
+				.help("Silence output messages that aren't errors")
+		);
 	};
 	return opts;
 }
@@ -398,12 +408,14 @@ bool ActionConvert::process_file(
 	}
 
 	// Report file sizes
-	if (initialSize != 0) {
-		fmt::print(
-			"{} ({} bytes) -> {} ({} bytes)\n", srcFile.string(), initialSize, outFile.string(), vtfFile->GetSize());
-	}
-	else {
-		fmt::print("{} -> {} ({} bytes)\n", srcFile.string(), outFile.string(), vtfFile->GetSize());
+	if (!opts.get<bool>(opts::quiet)) {
+		if (initialSize != 0) {
+			fmt::print(
+				"{} ({} KiB) -> {} ({} KiB)\n", srcFile.string(), initialSize / 1024, outFile.string(), vtfFile->GetSize() / 1024);
+		}
+		else {
+			fmt::print("{} -> {} ({} KiB)\n", srcFile.string(), outFile.string(), vtfFile->GetSize() / 1024);
+		}
 	}
 
 	return true;
@@ -524,7 +536,7 @@ bool ActionConvert::add_image_data(
 	// Hack for VTFLib; Ensure we have an alpha channel because that's well supported in that horrible code
 	if (image->channels() < 4 && image->type() != imglib::ChannelType::UInt8) {
 		if (!image->convert(image->type(), 4)) {
-			std::cerr << fmt::format("Failed to convert {}\n", imageSrc.c_str());
+			std::cerr << fmt::format("Failed to convert {}\n", imageSrc.string());
 			return false;
 		}
 	}
