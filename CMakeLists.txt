@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD 20)
 
 # Project settings
 option(BUILD_GUI "Build the VTFViewer GUI" ON)
+option(BUILD_TESTS "Build test binaries" OFF)
 
 # Global flags, mainly for UNIX. Use $ORIGIN rpath & -fPIC
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -20,6 +21,20 @@ add_subdirectory(external/vtflib)
 add_subdirectory(external/fmtlib)
 
 add_definitions(-DVTFLIB_STATIC=1)
+
+##############################
+# Setup gtest
+##############################
+if (BUILD_TESTS)
+	include(FetchContent)
+	FetchContent_Declare(
+		googletest
+		GIT_REPOSITORY https://github.com/google/googletest.git
+		GIT_TAG v1.15.2
+	)
+	FetchContent_MakeAvailable(googletest)
+	enable_testing()
+endif()
 
 ##############################
 # Common code
@@ -97,6 +112,36 @@ if (BUILD_GUI)
 		DESTINATION share/icons
 		RENAME vtfview.png
 	)
+endif()
+
+##############################
+# Tests
+##############################
+
+if (BUILD_TESTS)
+	include(GoogleTest)
+
+	add_executable(
+		vtex2_tests
+
+		src/tests/image_tests.cpp
+	)
+
+	target_link_libraries(
+		vtex2_tests PRIVATE
+
+		gtest_main
+		vtflib_static
+		com
+	)
+	
+	target_include_directories(
+		vtex2_tests PRIVATE
+
+		src
+	)
+
+	gtest_discover_tests(vtex2_tests)
 endif()
 
 ##############################

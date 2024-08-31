@@ -6,15 +6,20 @@
 #include <filesystem>
 #include <string>
 
+#include "lwiconv.hpp"
+
 #include "VTFLib.h"
 
 namespace imglib
 {
 
+	constexpr int MAX_CHANNELS = 4;
+
 	/**
 	 * Per-channel data type
 	 */
-	enum ChannelType {
+	enum class ChannelType {
+		None = -1,
 		UInt8,
 		UInt16,
 		Float // Generally a linear FP number (32-BPC)
@@ -44,6 +49,16 @@ namespace imglib
 	using ProcFlags = uint32_t;
 	inline constexpr ProcFlags PROC_GL_TO_DX_NORM = (1 << 0);
 
+	/**
+	 * Returns the number of bytes per pixel for the format
+	 */
+	size_t pixel_size(ChannelType type, int channels);
+
+	/**
+	 * Returns the size of the channel type
+	 */
+	size_t channel_size(ChannelType type);
+
 	class Image {
 	public:
 		Image() = default;
@@ -63,16 +78,16 @@ namespace imglib
 
 		~Image();
 
-		static inline std::shared_ptr<Image> load(const std::filesystem::path& path) {
-			return load(path.string().c_str());
+		static inline std::shared_ptr<Image> load(const std::filesystem::path& path, ChannelType convertOnLoad = ChannelType::None) {
+			return load(path.string().c_str(), convertOnLoad);
 		}
 
 		/**
 		 * Loads the image from the specified file
 		 * Optionally FILE* can be specified directly
 		 */
-		static std::shared_ptr<Image> load(const char* file);
-		static std::shared_ptr<Image> load(FILE* fp);
+		static std::shared_ptr<Image> load(const char* file, ChannelType convertOnLoad = ChannelType::None);
+		static std::shared_ptr<Image> load(FILE* fp, ChannelType convertOnLoad = ChannelType::None);
 
 		/**
 		 * @brief Clear internal data store, frees up some memory
@@ -104,8 +119,11 @@ namespace imglib
 		/**
 		 * Convert this image to the specified channel type
 		 * Not all conversions are supported, so check the return value!
+		 * @param type New channel type
+		 * @param channels New channel count. If < 0, it is defaulted to m_comps
+		 * @param pdef Default pixel fill for uninitialized pixels
 		 */
-		bool convert(ChannelType type);
+		bool convert(ChannelType type, int channels = -1, const lwiconv::PixelF& pdef = {0,0,0,1});
 
 		/**
 		 * Returns the VTF format which matches up to the data we have internally here
@@ -115,18 +133,23 @@ namespace imglib
 		int width() const {
 			return m_width;
 		}
+
 		int height() const {
 			return m_height;
 		}
+
 		int frames() const {
 			return m_frames;
 		}
+
 		int channels() const {
 			return m_comps;
 		}
+
 		ChannelType type() const {
 			return m_type;
 		}
+
 		const void* data() const {
 			return m_data;
 		}
@@ -139,9 +162,14 @@ namespace imglib
 		T* data() {
 			return static_cast<T*>(m_data);
 		}
+
 		template <typename T>
 		const T* data() const {
 			return static_cast<T*>(m_data);
+		}
+
+		size_t pixel_size() const {
+			return imglib::pixel_size(m_type, m_comps);
 		}
 
 	private:
@@ -193,55 +221,7 @@ namespace imglib
 	 */
 
 	bool convert_formats(
-		const void* srcData, void* dstData, ChannelType srcChanType, ChannelType dstChanType, int comps, int w, int h);
-
-	template <int COMPS>
-	void convert_16_to_8(const void* rgb16, void* rgb8, int w, int h) {
-		const uint16_t* src = static_cast<const uint16_t*>(rgb16);
-		uint8_t* dst = static_cast<uint8_t*>(rgb8);
-		for (int i = 0; i < w * h * COMPS; ++i)
-			dst[i] = src[i] * (255.f / 65535.f);
-	}
-
-	template <int COMPS>
-	void convert_32_to_8(const void* rgb32, void* rgb8, int w, int h) {
-		const float* src = static_cast<const float*>(rgb32);
-		uint8_t* dst = static_cast<uint8_t*>(rgb8);
-		for (int i = 0; i < w * h * COMPS; ++i)
-			dst[i] = src[i] * (255.f);
-	}
-
-	template <int COMPS>
-	void convert_8_to_32(const void* rgb8, void* rgb32, int w, int h) {
-		const uint8_t* src = static_cast<const uint8_t*>(rgb8);
-		float* dst = static_cast<float*>(rgb32);
-		for (int i = 0; i < w * h * COMPS; ++i)
-			dst[i] = src[i] / (255.f);
-	}
-
-	template <int COMPS>
-	void convert_16_to_32(const void* rgb16, void* rgb32, int w, int h) {
-		const uint16_t* src = static_cast<const uint16_t*>(rgb16);
-		float* dst = static_cast<float*>(rgb32);
-		for (int i = 0; i < w * h * COMPS; ++i)
-			dst[i] = src[i] / (65535.f);
-	}
-
-	template <int COMPS>
-	void convert_32_to_16(const void* rgb32, void* rgb16, int w, int h) {
-		const float* src = static_cast<const float*>(rgb32);
-		uint16_t* dst = static_cast<uint16_t*>(rgb16);
-		for (int i = 0; i < w * h * COMPS; ++i)
-			dst[i] = src[i] * 65535.f;
-	}
-
-	template <int COMPS>
-	void convert_8_to_16(const void* rgb8, void* rgb16, int w, int h) {
-		auto* src = static_cast<const uint8_t*>(rgb8);
-		auto* dst = static_cast<uint16_t*>(rgb16);
-		for (int i = 0; i < w * h * COMPS; ++i)
-			dst[i] = src[i] * (65535.f / 255.f);
-	}
+		const void* srcData, void* dstData, ChannelType srcChanType, ChannelType dstChanType, int w, int h, int inComps, int outComps, int inStride, int outStride, const lwiconv::PixelF& pdefaults = {0, 0, 0, 1});
 
 	/**
 	 * Get a compatible VTF image format for the image data

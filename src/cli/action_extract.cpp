@@ -217,7 +217,7 @@ bool ActionExtract::extract_file(
 		return false;
 	}
 
-	imglib::Image image(imageData, destIsFloat ? imglib::Float : imglib::UInt8, comps, w, h, true);
+	imglib::Image image(imageData, destIsFloat ? imglib::ChannelType::Float : imglib::ChannelType::UInt8, comps, w, h, true);
 	if (!image.save(outFile.string().c_str(), targetFmt)) {
 		std::cerr << fmt::format("Could not save image to '{}'!\n", outFile.string());
 		return false;

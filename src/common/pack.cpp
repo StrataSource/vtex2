@@ -56,7 +56,7 @@ pack::pack_image(int destChannels, ChannelPack_t* channels, int numChannels, int
 	}
 
 	// Allocate image
-	std::shared_ptr<imglib::Image> result = std::make_shared<imglib::Image>(imglib::UInt8, destChannels, w, h, false);
+	std::shared_ptr<imglib::Image> result = std::make_shared<imglib::Image>(imglib::ChannelType::UInt8, destChannels, w, h, false);
 
 	if (numChannels == 1)
 		pack_channel<1>(result->data<uint8_t>(), destChannels, channels, w, h);
