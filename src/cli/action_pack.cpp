@@ -130,12 +130,12 @@ const OptionList& ActionPack::get_options() const {
 
 		opts::file = opts.add(
 			ActionOption()
-				.long_opt("--outfile")
+				.long_opt("--output")
 				.short_opt("-o")
 				.type(OptType::String)
 				.value(false)
 				.end_of_line(true)
-				.help("Output file name"));
+				.help("Output file path"));
 
 		opts::rconst = opts.add(
 			ActionOption()
