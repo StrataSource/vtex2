@@ -322,24 +322,24 @@ bool ActionPack::pack_mrao(
 	pack::ChannelPack_t pack[] = {
 		{.srcChan = 0,
 		 .dstChan = 0,
-		 .srcData = metalnessData->data<uint8_t>(),
-		 .comps = metalnessData->channels(),
+		 .srcData = metalnessData ? metalnessData->data<uint8_t>() : nullptr,
+		 .comps = metalnessData ? metalnessData->channels() : 1,
 		 .constant = mconst},
 		{.srcChan = 0,
 		 .dstChan = 1,
-		 .srcData = roughnessData->data<uint8_t>(),
-		 .comps = roughnessData->channels(),
+		 .srcData = roughnessData ? roughnessData->data<uint8_t>() : nullptr,
+		 .comps = roughnessData ? roughnessData->channels() : 1,
 		 .constant = rconst},
 		{.srcChan = 0,
 		 .dstChan = 2,
-		 .srcData = aoData->data<uint8_t>(),
-		 .comps = aoData->channels(),
+		 .srcData = aoData ? aoData->data<uint8_t>() : nullptr,
+		 .comps = aoData ? aoData->channels() : 1,
 		 .constant = aoconst},
 		{
 			.srcChan = 0,
 			.dstChan = 3,
-			.srcData = tmaskData->data<uint8_t>(),
-			.comps = tmaskData->channels(),
+			.srcData = tmaskData ? tmaskData->data<uint8_t>() : nullptr,
+			.comps = tmaskData ? tmaskData->channels() : 1,
 			.constant = 1,
 		}};
 
@@ -355,9 +355,14 @@ bool ActionPack::pack_mrao(
 	}
 
 	// Free up some mem
-	roughnessData->clear();
-	aoData->clear();
-	metalnessData->clear();
+	if (roughnessData)
+		roughnessData->clear();
+	if (aoData)
+		aoData->clear();
+	if (metalnessData)
+		metalnessData->clear();
+	if (tmaskData)
+		tmaskData->clear();
 
 	// If user requested clamp, do that now
 	if (clampw > 0 || clamph > 0) {
@@ -373,7 +378,8 @@ bool ActionPack::pack_mrao(
 
 	bool success = true;
 	if ((success = save_vtf(outpath, outImage, opts, false)))
-		std::cout << fmt::format("Finished processing {}\n", outpath.string());
+		if (!opts.get<bool>(opts::quiet))
+			std::cout << fmt::format("Finished {} ({} KiB)\n", outpath.string(), file_->GetSize() / 1024);
 	return success;
 }
 
