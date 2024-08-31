@@ -30,6 +30,7 @@ namespace opts
 	static int width, height, mips;
 	static int mconst, rconst, aoconst, hconst;
 	static int toDX;
+	static int quiet;
 } // namespace opts
 
 std::string ActionPack::get_help() const {
@@ -176,6 +177,15 @@ const OptionList& ActionPack::get_options() const {
 				.value(false)
 				.type(OptType::Bool)
 				.help("Treat the incoming normal map as a OpenGL normal map"));
+
+		opts::quiet = opts.add(
+			ActionOption()
+				.long_opt("--quiet")
+				.short_opt("-q")
+				.value(false)
+				.type(OptType::Bool)
+				.help("Silence output messages that aren't errors")
+		);
 	};
 	return opts;
 }
@@ -467,8 +477,8 @@ bool ActionPack::pack_normal(
 
 	success = save_vtf(outpath, outImage, opts, true);
 
-	if (success)
-		std::cout << fmt::format("Finished processing {}\n", outpath.string());
+	if (success && !opts.get<bool>(opts::quiet))
+		std::cout << fmt::format("Finished {} ({} KiB)\n", outpath.string(), file_->GetSize() / 1024);
 	return success;
 }
 
