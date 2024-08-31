@@ -303,7 +303,7 @@ bool ActionConvert::process_file(
 		outFile = srcFile.parent_path() / srcFile.filename().replace_extension(".vtf");
 	}
 	else {
-		outFile = srcFile.parent_path() / userOutputFile;
+		outFile = userOutputFile;
 	}
 
 	auto format = ImageFormatFromUserString(formatStr.c_str());
