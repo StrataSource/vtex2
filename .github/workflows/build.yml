@@ -35,6 +35,10 @@ jobs:
         echo $LD_LIBRARY_PATH
         cmake --build ./build
 
+    - name: Test
+      run: |
+        ctest --test-dir build
+
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v4
       with:
@@ -65,6 +69,10 @@ jobs:
 
     - name: Build
       run: msbuild /m /p:Configuration=Release build\vtex2.sln
+
+    - name: Test
+      run: |
+        ctest --test-dir build
 
     - name: Upload a Build Artifact
       uses: actions/upload-artifact@v4
