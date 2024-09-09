@@ -435,12 +435,18 @@ ActionConvert::init_from_file(const std::filesystem::path& src, VTFLib::CVTFFile
 	// Convert immediately to the processing format, so we can match between src and dest
 	srcFile->ConvertInPlace(newFormat);
 
-	// Use the mip count from the source file if the user hasn't specified it yet
-	auto mipCount = m_opts->has(opts::mips) || m_opts->has(opts::nomips) ? m_mips : srcFile->GetMipmapCount();
-
 	// Determine buffer sizes
 	const auto width = (m_width == -1) ? srcFile->GetWidth() : m_width;
 	const auto height = (m_height == -1) ? srcFile->GetHeight() : m_height;
+
+	// If the width/height have been changed, we can't just pull the mip count from the source VTF
+	const bool bNeedsNewMips = width != srcFile->GetWidth() || height != srcFile->GetHeight();
+	const int nDefaultMips = CVTFFile::ComputeMipmapCount(width, height, 1);
+
+	// Use the mip count from the source file if the user hasn't specified it yet
+	auto mipCount = m_opts->has(opts::mips) || m_opts->has(opts::nomips) 
+		? m_mips 
+		: (bNeedsNewMips ? nDefaultMips : srcFile->GetMipmapCount());
 
 	// Init image with the desired parameters and processing format
 	file->Init(
