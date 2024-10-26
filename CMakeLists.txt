@@ -60,11 +60,11 @@ if (BUILD_GUI)
 			res/resource.qrc)
 
 	add_executable(vtfview ${VIEWER_SRC})
-endif ()
 
-# Set up the debugger so it can run the program without copying a million dlls
-if (WIN32)
-	set_target_properties(vtfview PROPERTIES VS_DEBUGGER_ENVIRONMENT "PATH=%PATH%;${QT_BASEDIR}/bin;")
+	 # Set up the debugger so it can run the program without copying a million dlls
+	if (WIN32)
+		set_target_properties(vtfview PROPERTIES VS_DEBUGGER_ENVIRONMENT "PATH=%PATH%;${QT_BASEDIR}/bin;")
+	endif ()
 endif ()
 
 target_link_libraries(vtex2 PRIVATE vtflib_static com fmt::fmt)
