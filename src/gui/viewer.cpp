@@ -320,6 +320,7 @@ void ViewerMainWindow::on_open_file() {
 			this, tr("Could not open file"),
 			tr("The file '%1' could not be opened. Make sure it's readable and a valid image.").arg(file));
 	}
+
 }
 
 // Promps the user for save if dirty
@@ -410,6 +411,7 @@ bool ViewerMainWindow::import_file(const char* path) {
 		delete file;
 		return false;
 	}
+
 	return true;
 }
 
@@ -491,11 +493,20 @@ void InfoWidget::update_info(VTFLib::CVTFFile* file) {
 	file->GetReflectivity(x, y, z);
 	find("Reflectivity")->setText(fmt::format(FMT_STRING("{:.3f} {:.3f} {:.3f}"), x, y, z).c_str());
 
+
+
 	// Select the correct image format
 	for (int i = 0; i < util::ArraySize(IMAGE_FORMATS); ++i) {
 		if (IMAGE_FORMATS[i].format == file->GetFormat()) {
 			// FIXME: IT CRASHES HERE
 			formatCombo_->setCurrentIndex(i);
+			break;
+		}
+	}
+
+	for (int i = 0; i < 7; i++) {
+		if (i == file->GetMinorVersion()) {
+			versionCombo_->setCurrentIndex(i);
 			break;
 		}
 	}
@@ -547,6 +558,23 @@ void InfoWidget::setup_ui() {
 		});
 	++row;
 
+	versionCombo_ = new QComboBox(this);
+	versionCombo_->addItem("7.0", userVtfMinor);
+	versionCombo_->addItem("7.1", userVtfMinor);
+	versionCombo_->addItem("7.2", userVtfMinor);
+	versionCombo_->addItem("7.3", userVtfMinor);
+	versionCombo_->addItem("7.4", userVtfMinor);
+	versionCombo_->addItem("7.5", userVtfMinor);
+	versionCombo_->addItem("7.6", userVtfMinor);
+	imageGroupLayout->addWidget(new QLabel("Image version:", this), row, 0);
+	imageGroupLayout->addWidget(versionCombo_, row, 1);
+	connect(versionCombo_, qOverload<int>(&QComboBox::currentIndexChanged),
+		[this](int index)
+		{
+			doc_->set_ver(7, index);
+		});
+	++row;
+
 	for (auto& f : INFO_FIELDS) {
 		auto* label = new QLabel(QString(f) + ":", imageGroupBox);
 		auto* edit = new QLineEdit(this);
@@ -573,6 +601,23 @@ void InfoWidget::setup_ui() {
 ImageViewWidget::ImageViewWidget(Document*, QWidget* pParent)
 	: QWidget(pParent) {
 	setMinimumSize(256, 256);
+
+
+	// Make the checkerboard pattern default image.
+	// This is done here rather than in paint for performance's sake, as the checkerboard will never change.
+	checkerboard = QImage(checkerboard_size, checkerboard_size, QImage::Format_RGB32);
+	QRgb val;
+	val = qRgb(55, 60, 65);
+	QRgb val2;
+	val2 = qRgb(60, 64, 68);
+
+	for ( int nRow = 0; nRow < checkerboard_size; ++nRow)
+		for ( int nCol = 0; nCol < checkerboard_size; ++nCol)
+			if (((nRow / 20 + nCol / 20) % 2) == 0)
+				checkerboard.setPixel(nRow, nCol, val);
+			else
+				checkerboard.setPixel(nRow, nCol, val2);
+
 }
 
 void ImageViewWidget::set_pixmap(const QImage& pixmap) {
@@ -596,11 +641,25 @@ void ImageViewWidget::set_vtf(VTFLib::CVTFFile* file) {
 	update(); // Force redraw
 }
 
+
 void ImageViewWidget::paintEvent(QPaintEvent* event) {
 	QPainter painter(this);
 
-	if (!file_)
+	if (!file_) {
+		// Use default checkerboard then return.
+
+
+
+		QPoint destpt =
+			QPoint(width() / 2, height() / 2) - QPoint((checkerboard_size * zoom_) / 2, (checkerboard_size * zoom_) / 2) + pos_;
+
+		QRect target = QRect(destpt.x(), destpt.y(), checkerboard_size * zoom_, checkerboard_size * zoom_);
+
+		painter.drawImage(target, checkerboard, QRect(0, 0, checkerboard_size, checkerboard_size));
+
+
 		return;
+	}
 
 	// Compute draw size for this mip, frame, etc
 	vlUInt imageWidth, imageHeight, imageDepth;

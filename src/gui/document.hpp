@@ -49,6 +49,7 @@ namespace vtfview
 		}
 
 		void set_format(VTFImageFormat format);
+		void set_ver(int major_ver, int minor_ver);
 
 	signals:
 		/**

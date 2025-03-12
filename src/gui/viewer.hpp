@@ -111,6 +111,9 @@ namespace vtfview
 
 		std::unordered_map<std::string, QLineEdit*> fields_;
 		QComboBox* formatCombo_ = nullptr;
+		// Default Minor Version is 6.
+		int userVtfMinor = 6;
+		QComboBox* versionCombo_ = nullptr;
 		Document* doc_ = nullptr;
 	};
 
@@ -125,6 +128,11 @@ namespace vtfview
 
 		void set_pixmap(const QImage& pixmap);
 		void set_vtf(VTFLib::CVTFFile* file);
+
+		// Should probably make the checkerboard size dependent on viewer size...
+		const int checkerboard_size = 512;
+		//const int checkerboard_quality = 16;
+		QImage checkerboard;
 
 		inline const QImage& pixmap() const {
 			return image_;

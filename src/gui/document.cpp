@@ -81,6 +81,7 @@ bool Document::load_file(VTFLib::CVTFFile* file) {
 	file_ = file;
 	emit vtfFileChanged("", file);
 	path_ = "";
+
 	return true;
 }
 
@@ -116,5 +117,17 @@ void Document::set_format(VTFImageFormat format) {
 		return;
 	}
 	format_ = format;
+	mark_modified();
+}
+
+void Document::set_ver(int major_ver, int minor_ver) {
+	if (!file_)
+		return;
+
+	file_->SetVersion(major_ver, minor_ver);
+	// VTF <7.6 does not support Aux Compression, set it to 0 in such a scenario.
+	if (minor_ver < 6)
+		file_->SetAuxCompressionLevel(0);
+
 	mark_modified();
 }
