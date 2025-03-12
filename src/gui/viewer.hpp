@@ -46,6 +46,7 @@ namespace vtfview
 		void on_new_file();
 		void on_reload_file();
 		void on_import_file();
+		void on_export_file();
 
 	public:
 		bool load_file(const char* path) {
@@ -53,6 +54,7 @@ namespace vtfview
 		}
 
 		bool import_file(const char* path);
+		bool export_file(const char* path);
 
 		enum Actions {
 			Save,
@@ -111,8 +113,6 @@ namespace vtfview
 
 		std::unordered_map<std::string, QLineEdit*> fields_;
 		QComboBox* formatCombo_ = nullptr;
-		// Default Minor Version is 6.
-		int userVtfMinor = 6;
 		QComboBox* versionCombo_ = nullptr;
 		Document* doc_ = nullptr;
 	};
@@ -161,6 +161,10 @@ namespace vtfview
 			mip_ = file_ ? util::clamp(f, 1, file_->GetMipmapCount()) : 1;
 			mip_--;
 			repaint();
+		}
+
+		int get_mip() {
+			return mip_;
 		}
 
 		void zoom(float amount);

@@ -229,6 +229,9 @@ void ViewerMainWindow::setup_menubar() {
 	fileMenu->addAction(
 		QIcon::fromTheme("document-import", style()->standardIcon(QStyle::SP_ArrowUp)), "Import File", this,
 		&ViewerMainWindow::on_import_file);
+	fileMenu->addAction(
+		QIcon::fromTheme("document-export", style()->standardIcon(QStyle::SP_ArrowDown)), "Export File", this,
+		&ViewerMainWindow::on_export_file);
 	fileMenu->addSeparator();
 	fileMenu->addAction(
 		"Exit",
@@ -397,6 +400,21 @@ void ViewerMainWindow::on_import_file() {
 	}
 }
 
+void ViewerMainWindow::on_export_file() {
+	auto filename = QFileDialog::getSaveFileName(this, tr("Export Image"), QString(), ALL_IMAGE_FILTERS).toUtf8();
+
+	if (filename.isEmpty())
+		return;
+
+	if (!export_file(filename)) {
+		QMessageBox::warning(
+			this, "File could not be exported.",
+			tr("Failed to export image: %1").arg(filename), QMessageBox::Ok);
+	}
+
+}
+
+
 bool ViewerMainWindow::import_file(const char* path) {
 	auto image = imglib::Image::load(path);
 	if (!image)
@@ -414,6 +432,59 @@ bool ViewerMainWindow::import_file(const char* path) {
 
 	return true;
 }
+
+// Most of this is taken straight out of the CLI, which should be fine.
+bool ViewerMainWindow::export_file(const char* path)
+{
+
+	auto* file_ = document()->file();
+
+	if (!file_)
+		return false;
+
+	imglib::FileFormat imgformat = imglib::image_get_format_from_file(path);
+
+	vlUInt w, h, d;
+	file_->ComputeMipmapDimensions(file_->GetWidth(), file_->GetHeight(), file_->GetDepth(), viewer_->get_mip(), w, h, d);
+	bool destIsFloat = false;
+	bool ok;
+	vlByte* imageData = nullptr;
+
+	if (imgformat == imglib::FileFormat::None)
+		return false;
+
+	if (imgformat == imglib::FileFormat::Hdr)
+		destIsFloat = true;
+
+	auto formatInfo = file_->GetImageFormatInfo(file_->GetFormat());
+	int comps = formatInfo.uiAlphaBitsPerPixel > 0 ? 4 : 3;
+
+
+	if (destIsFloat) {
+		imageData = static_cast<vlByte*>(malloc(w * h * comps * sizeof(float)));
+		ok = VTFLib::CVTFFile::Convert(
+			file_->GetData(0, 0, 0, viewer_->get_mip()), imageData, w, h, file_->GetFormat(),
+			comps == 3 ? IMAGE_FORMAT_RGB323232F : IMAGE_FORMAT_RGBA32323232F);
+	}
+	else {
+		// comps = 3;
+		imageData = static_cast<vlByte*>(malloc(w * h * comps * sizeof(uint8_t)));
+		ok = VTFLib::CVTFFile::Convert(
+			file_->GetData(0, 0, 0, viewer_->get_mip()), imageData, w, h, file_->GetFormat(),
+			comps == 3 ? IMAGE_FORMAT_RGB888 : IMAGE_FORMAT_RGBA8888);
+	}
+
+
+	imglib::Image image(imageData, destIsFloat ? imglib::ChannelType::Float : imglib::ChannelType::UInt8, comps, w, h, true);
+
+
+
+	if (image.save(path, imgformat))
+		return true;
+
+	return false;
+}
+
 
 //////////////////////////////////////////////////////////////////////////////////
 // InfoWidget
@@ -559,13 +630,10 @@ void InfoWidget::setup_ui() {
 	++row;
 
 	versionCombo_ = new QComboBox(this);
-	versionCombo_->addItem("7.0", userVtfMinor);
-	versionCombo_->addItem("7.1", userVtfMinor);
-	versionCombo_->addItem("7.2", userVtfMinor);
-	versionCombo_->addItem("7.3", userVtfMinor);
-	versionCombo_->addItem("7.4", userVtfMinor);
-	versionCombo_->addItem("7.5", userVtfMinor);
-	versionCombo_->addItem("7.6", userVtfMinor);
+
+	for (int i = 0; i < 7; i++)
+		versionCombo_->addItem(std::format("7.{}", i).c_str());
+
 	imageGroupLayout->addWidget(new QLabel("Image version:", this), row, 0);
 	imageGroupLayout->addWidget(versionCombo_, row, 1);
 	connect(versionCombo_, qOverload<int>(&QComboBox::currentIndexChanged),

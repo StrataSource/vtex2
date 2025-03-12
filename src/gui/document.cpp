@@ -85,6 +85,7 @@ bool Document::load_file(VTFLib::CVTFFile* file) {
 	return true;
 }
 
+
 void Document::unload_file() {
 	if (!file_)
 		return;
