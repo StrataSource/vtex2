@@ -449,6 +449,10 @@ bool ViewerMainWindow::export_file(const char* path)
 	bool destIsFloat = false;
 	bool ok;
 	vlByte* imageData = nullptr;
+	auto cleanupImageData = util::cleanup([imageData]
+	{
+		free(imageData);
+	});
 
 	if (imgformat == imglib::FileFormat::None)
 		return false;
