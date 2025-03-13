@@ -579,12 +579,7 @@ void InfoWidget::update_info(VTFLib::CVTFFile* file) {
 		}
 	}
 
-	for (int i = 0; i < 7; i++) {
-		if (i == file->GetMinorVersion()) {
-			versionCombo_->setCurrentIndex(i);
-			break;
-		}
-	}
+	versionCombo_->setCurrentIndex(file->GetMinorVersion());
 }
 
 void InfoWidget::setup_ui() {
@@ -636,9 +631,9 @@ void InfoWidget::setup_ui() {
 	versionCombo_ = new QComboBox(this);
 
 	for (int i = 0; i < 7; i++)
-		versionCombo_->addItem(std::format("7.{}", i).c_str());
+		versionCombo_->addItem(QString("7.%1").arg(i));
 
-	imageGroupLayout->addWidget(new QLabel("Image version:", this), row, 0);
+	imageGroupLayout->addWidget(new QLabel("Version:", this), row, 0);
 	imageGroupLayout->addWidget(versionCombo_, row, 1);
 	connect(versionCombo_, qOverload<int>(&QComboBox::currentIndexChanged),
 		[this](int index)
@@ -678,17 +673,15 @@ ImageViewWidget::ImageViewWidget(Document*, QWidget* pParent)
 	// Make the checkerboard pattern default image.
 	// This is done here rather than in paint for performance's sake, as the checkerboard will never change.
 	checkerboard = QImage(checkerboard_size, checkerboard_size, QImage::Format_RGB32);
-	QRgb val;
-	val = qRgb(55, 60, 65);
-	QRgb val2;
-	val2 = qRgb(60, 64, 68);
+	QRgb checker_color1 = qRgb(55, 60, 65);
+	QRgb checker_color2 = qRgb(60, 64, 68);
 
 	for ( int nRow = 0; nRow < checkerboard_size; ++nRow)
 		for ( int nCol = 0; nCol < checkerboard_size; ++nCol)
-			if (((nRow / 20 + nCol / 20) % 2) == 0)
-				checkerboard.setPixel(nRow, nCol, val);
+			if (((nRow / checkerboard_divisor + nCol / checkerboard_divisor) % 2) == 0)
+				checkerboard.setPixel(nRow, nCol, checker_color1);
 			else
-				checkerboard.setPixel(nRow, nCol, val2);
+				checkerboard.setPixel(nRow, nCol, checker_color2);
 
 }
 
@@ -719,16 +712,10 @@ void ImageViewWidget::paintEvent(QPaintEvent* event) {
 
 	if (!file_) {
 		// Use default checkerboard then return.
-
-
-
 		QPoint destpt =
 			QPoint(width() / 2, height() / 2) - QPoint((checkerboard_size * zoom_) / 2, (checkerboard_size * zoom_) / 2) + pos_;
-
 		QRect target = QRect(destpt.x(), destpt.y(), checkerboard_size * zoom_, checkerboard_size * zoom_);
-
 		painter.drawImage(target, checkerboard, QRect(0, 0, checkerboard_size, checkerboard_size));
-
 
 		return;
 	}

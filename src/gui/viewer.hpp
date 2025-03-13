@@ -130,8 +130,9 @@ namespace vtfview
 		void set_vtf(VTFLib::CVTFFile* file);
 
 		// Should probably make the checkerboard size dependent on viewer size...
-		const int checkerboard_size = 512;
+		static constexpr inline int checkerboard_size = 512;
 		//const int checkerboard_quality = 16;
+		static constexpr inline int checkerboard_divisor = 16;
 		QImage checkerboard;
 
 		inline const QImage& pixmap() const {
