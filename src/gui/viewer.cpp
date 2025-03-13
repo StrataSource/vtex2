@@ -229,6 +229,9 @@ void ViewerMainWindow::setup_menubar() {
 	fileMenu->addAction(
 		QIcon::fromTheme("document-import", style()->standardIcon(QStyle::SP_ArrowUp)), "Import File", this,
 		&ViewerMainWindow::on_import_file);
+	fileMenu->addAction(
+		QIcon::fromTheme("document-export", style()->standardIcon(QStyle::SP_ArrowDown)), "Export File", this,
+		&ViewerMainWindow::on_export_file);
 	fileMenu->addSeparator();
 	fileMenu->addAction(
 		"Exit",
@@ -320,6 +323,7 @@ void ViewerMainWindow::on_open_file() {
 			this, tr("Could not open file"),
 			tr("The file '%1' could not be opened. Make sure it's readable and a valid image.").arg(file));
 	}
+
 }
 
 // Promps the user for save if dirty
@@ -396,6 +400,21 @@ void ViewerMainWindow::on_import_file() {
 	}
 }
 
+void ViewerMainWindow::on_export_file() {
+	auto filename = QFileDialog::getSaveFileName(this, tr("Export Image"), QString(), ALL_IMAGE_FILTERS).toUtf8();
+
+	if (filename.isEmpty())
+		return;
+
+	if (!export_file(filename)) {
+		QMessageBox::warning(
+			this, "File could not be exported.",
+			tr("Failed to export image: %1").arg(filename), QMessageBox::Ok);
+	}
+
+}
+
+
 bool ViewerMainWindow::import_file(const char* path) {
 	auto image = imglib::Image::load(path);
 	if (!image)
@@ -410,8 +429,66 @@ bool ViewerMainWindow::import_file(const char* path) {
 		delete file;
 		return false;
 	}
+
 	return true;
 }
+
+// Most of this is taken straight out of the CLI, which should be fine.
+bool ViewerMainWindow::export_file(const char* path)
+{
+
+	auto* file_ = document()->file();
+
+	if (!file_)
+		return false;
+
+	imglib::FileFormat imgformat = imglib::image_get_format_from_file(path);
+
+	vlUInt w, h, d;
+	file_->ComputeMipmapDimensions(file_->GetWidth(), file_->GetHeight(), file_->GetDepth(), viewer_->get_mip(), w, h, d);
+	bool destIsFloat = false;
+	bool ok;
+	vlByte* imageData = nullptr;
+	auto cleanupImageData = util::cleanup([imageData]
+	{
+		free(imageData);
+	});
+
+	if (imgformat == imglib::FileFormat::None)
+		return false;
+
+	if (imgformat == imglib::FileFormat::Hdr)
+		destIsFloat = true;
+
+	auto formatInfo = file_->GetImageFormatInfo(file_->GetFormat());
+	int comps = formatInfo.uiAlphaBitsPerPixel > 0 ? 4 : 3;
+
+
+	if (destIsFloat) {
+		imageData = static_cast<vlByte*>(malloc(w * h * comps * sizeof(float)));
+		ok = VTFLib::CVTFFile::Convert(
+			file_->GetData(0, 0, 0, viewer_->get_mip()), imageData, w, h, file_->GetFormat(),
+			comps == 3 ? IMAGE_FORMAT_RGB323232F : IMAGE_FORMAT_RGBA32323232F);
+	}
+	else {
+		// comps = 3;
+		imageData = static_cast<vlByte*>(malloc(w * h * comps * sizeof(uint8_t)));
+		ok = VTFLib::CVTFFile::Convert(
+			file_->GetData(0, 0, 0, viewer_->get_mip()), imageData, w, h, file_->GetFormat(),
+			comps == 3 ? IMAGE_FORMAT_RGB888 : IMAGE_FORMAT_RGBA8888);
+	}
+
+
+	imglib::Image image(imageData, destIsFloat ? imglib::ChannelType::Float : imglib::ChannelType::UInt8, comps, w, h, true);
+
+
+
+	if (image.save(path, imgformat))
+		return true;
+
+	return false;
+}
+
 
 //////////////////////////////////////////////////////////////////////////////////
 // InfoWidget
@@ -491,6 +568,8 @@ void InfoWidget::update_info(VTFLib::CVTFFile* file) {
 	file->GetReflectivity(x, y, z);
 	find("Reflectivity")->setText(fmt::format(FMT_STRING("{:.3f} {:.3f} {:.3f}"), x, y, z).c_str());
 
+
+
 	// Select the correct image format
 	for (int i = 0; i < util::ArraySize(IMAGE_FORMATS); ++i) {
 		if (IMAGE_FORMATS[i].format == file->GetFormat()) {
@@ -499,6 +578,8 @@ void InfoWidget::update_info(VTFLib::CVTFFile* file) {
 			break;
 		}
 	}
+
+	versionCombo_->setCurrentIndex(file->GetMinorVersion());
 }
 
 void InfoWidget::setup_ui() {
@@ -547,6 +628,20 @@ void InfoWidget::setup_ui() {
 		});
 	++row;
 
+	versionCombo_ = new QComboBox(this);
+
+	for (int i = 0; i < 7; i++)
+		versionCombo_->addItem(QString("7.%1").arg(i));
+
+	imageGroupLayout->addWidget(new QLabel("Version:", this), row, 0);
+	imageGroupLayout->addWidget(versionCombo_, row, 1);
+	connect(versionCombo_, qOverload<int>(&QComboBox::currentIndexChanged),
+		[this](int index)
+		{
+			doc_->set_ver(7, index);
+		});
+	++row;
+
 	for (auto& f : INFO_FIELDS) {
 		auto* label = new QLabel(QString(f) + ":", imageGroupBox);
 		auto* edit = new QLineEdit(this);
@@ -573,6 +668,21 @@ void InfoWidget::setup_ui() {
 ImageViewWidget::ImageViewWidget(Document*, QWidget* pParent)
 	: QWidget(pParent) {
 	setMinimumSize(256, 256);
+
+
+	// Make the checkerboard pattern default image.
+	// This is done here rather than in paint for performance's sake, as the checkerboard will never change.
+	checkerboard = QImage(checkerboard_size, checkerboard_size, QImage::Format_RGB32);
+	QRgb checker_color1 = qRgb(55, 60, 65);
+	QRgb checker_color2 = qRgb(60, 64, 68);
+
+	for ( int nRow = 0; nRow < checkerboard_size; ++nRow)
+		for ( int nCol = 0; nCol < checkerboard_size; ++nCol)
+			if (((nRow / checkerboard_divisor + nCol / checkerboard_divisor) % 2) == 0)
+				checkerboard.setPixel(nRow, nCol, checker_color1);
+			else
+				checkerboard.setPixel(nRow, nCol, checker_color2);
+
 }
 
 void ImageViewWidget::set_pixmap(const QImage& pixmap) {
@@ -596,11 +706,19 @@ void ImageViewWidget::set_vtf(VTFLib::CVTFFile* file) {
 	update(); // Force redraw
 }
 
+
 void ImageViewWidget::paintEvent(QPaintEvent* event) {
 	QPainter painter(this);
 
-	if (!file_)
+	if (!file_) {
+		// Use default checkerboard then return.
+		QPoint destpt =
+			QPoint(width() / 2, height() / 2) - QPoint((checkerboard_size * zoom_) / 2, (checkerboard_size * zoom_) / 2) + pos_;
+		QRect target = QRect(destpt.x(), destpt.y(), checkerboard_size * zoom_, checkerboard_size * zoom_);
+		painter.drawImage(target, checkerboard, QRect(0, 0, checkerboard_size, checkerboard_size));
+
 		return;
+	}
 
 	// Compute draw size for this mip, frame, etc
 	vlUInt imageWidth, imageHeight, imageDepth;
