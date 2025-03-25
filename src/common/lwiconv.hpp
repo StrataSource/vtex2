@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <cassert>
 
 namespace lwiconv
 {
@@ -90,6 +91,7 @@ inline void pixel_to_data(T* pout, const PixelF& p) {
 /**
  * \brief Convert buffer from one color format to another
  * The input and output buffers are assumed to be the same dimensions.
+ * in and out must not overlap.
  * \param in Pointer to the input buffer
  * \param out Pointer to the output buffer
  * \param w Width of the image
@@ -136,6 +138,64 @@ static void convert_generic(const void* in, void* out, int w, int h, int inC, in
 
 	for (size_t i = 0; i < target; ++i, pin += isb, pout += osb)
 		outConv(pout, inConv(pin, channelDefaults));
+}
+
+constexpr uint32_t NO_SWIZZLE = 0x00010203;
+
+/**
+ * \brief Makes a 32-bit swizzle mask thingy
+ * Parameters A B C D indicate where the channel should get its data.
+ * So, make_swizzle(3, 2, 1, 0) would turn an RGBA image into ABGR
+ */
+static inline constexpr uint32_t make_swizzle(int a, int b, int c, int d) {
+	return (a & 0xFF) << 24 | (b & 0xFF) << 16 | (c & 0xFF) << 8 | (d & 0xFF);
+}
+
+namespace detail {
+
+static inline PixelF swizzle_one(const PixelF& pixel, uint32_t mask) {
+	return { pixel.d[(mask >> 24) & 0xFF], pixel.d[(mask >> 16) & 0xFF], pixel.d[(mask >> 8) & 0xFF], pixel.d[mask & 0xFF] };
+}
+	
+}
+
+template<typename T>
+static bool swizzle(T* image, int w, int h, int comps, uint32_t swizzle) {	
+	assert(comps <= MAX_CHANNELS && comps > 0);
+	if (comps <= 0 || comps > MAX_CHANNELS)
+		return false;
+
+	// Check that swizzle is in bounds too
+	for (int i = 0; i < comps; ++i)
+		if (((swizzle >> (i*8)) & 0xFF) > comps)
+			return false;
+	
+	using fnInConv = PixelF (*)(const T*, const PixelF&);
+	constexpr fnInConv inConvFuncs[MAX_CHANNELS] = {
+		detail::pixel_from_data<T, 1>,
+		detail::pixel_from_data<T, 2>,
+		detail::pixel_from_data<T, 3>,
+		detail::pixel_from_data<T, 4>,
+	};
+	const fnInConv inConv = inConvFuncs[comps-1];
+
+	using fnOutConv = void (*)(T*, const PixelF&);
+	constexpr fnOutConv outConvFuncs[MAX_CHANNELS] = {
+		detail::pixel_to_data<T, 1>,
+		detail::pixel_to_data<T, 2>,
+		detail::pixel_to_data<T, 3>,
+		detail::pixel_to_data<T, 4>,
+	};
+	const fnOutConv outConv = outConvFuncs[comps-1];
+
+	const size_t stride = comps * sizeof(T);
+	for (int m = 0; m < w*h; ++m, image += stride) {
+		outConv(image, detail::swizzle_one(
+			inConv(image, {0,0,0,0}), swizzle
+		));
+	}
+	
+	return true;
 }
 
 } // lwiconv
