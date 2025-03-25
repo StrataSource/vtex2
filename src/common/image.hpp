@@ -14,6 +14,8 @@ namespace imglib
 {
 
 	constexpr int MAX_CHANNELS = 4;
+	
+	using lwiconv::make_swizzle;
 
 	/**
 	 * Per-channel data type
@@ -48,6 +50,9 @@ namespace imglib
 
 	using ProcFlags = uint32_t;
 	inline constexpr ProcFlags PROC_GL_TO_DX_NORM = (1 << 0);
+	inline constexpr ProcFlags PROC_INVERT_ALPHA = (1 << 1);
+	
+	uint32_t swizzle_from_str(const char* str);
 
 	/**
 	 * Returns the number of bytes per pixel for the format
@@ -124,6 +129,12 @@ namespace imglib
 		 * @param pdef Default pixel fill for uninitialized pixels
 		 */
 		bool convert(ChannelType type, int channels = -1, const lwiconv::PixelF& pdef = {0,0,0,1});
+		
+		/**
+		 * Perform in-place swizzle of components
+		 * @param mask Swizzle mask. @see lwiconv::make_swizzle
+		 */
+		bool swizzle(uint32_t mask);
 
 		/**
 		 * Returns the VTF format which matches up to the data we have internally here

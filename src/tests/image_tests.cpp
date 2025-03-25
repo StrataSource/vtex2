@@ -118,3 +118,12 @@ TEST(ImageTests, Basic8To8)
 	runTest<uint8_t, uint8_t>(32, 32, 4, 4, {128, 0, 0xFF, 99}, {128, 0, 0xFF, 99});
 }
 
+TEST(ImageTests, BasicSwizzle)
+{
+	uint8_t img[4] = {1,2,3,4};
+	ASSERT_TRUE(swizzle<uint8_t>(img, 1, 1, 4, make_swizzle(3, 2, 1, 0)));
+	ASSERT_EQ(img[0], 4);
+	ASSERT_EQ(img[1], 3);
+	ASSERT_EQ(img[2], 2);
+	ASSERT_EQ(img[3], 1);
+}

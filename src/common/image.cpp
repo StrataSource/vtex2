@@ -306,6 +306,8 @@ static bool process_image_internal(void* indata, int comps, int w, int h, ProcFl
 		T* cur = data + i;
 		if (flags & PROC_GL_TO_DX_NORM)
 			cur[1] = FULL_VAL<T> - cur[1]; // Invert green channel
+		if (flags & PROC_INVERT_ALPHA)
+			cur[3] = FULL_VAL<T> - cur[3];
 	}
 	return true;
 }
@@ -400,4 +402,34 @@ size_t imglib::channel_size(ChannelType type) {
 		assert(0);
 		return 1;
 	}
+}
+
+bool Image::swizzle(uint32_t mask) {
+	switch (m_type) {
+	case ChannelType::UInt8:
+		return lwiconv::swizzle(static_cast<uint8_t*>(m_data), m_width, m_height, m_comps, mask);
+	case ChannelType::UInt16:
+		return lwiconv::swizzle(static_cast<uint16_t*>(m_data), m_width, m_height, m_comps, mask);
+	case ChannelType::Float:
+		return lwiconv::swizzle(static_cast<float*>(m_data), m_width, m_height, m_comps, mask);
+	default:
+		return false;
+	}
+}
+
+uint32_t imglib::swizzle_from_str(const char* str) {
+	uint32_t mask = 0;
+	for (int i = 0; i < lwiconv::MAX_CHANNELS; ++i, ++str) {
+		if (!*str) break;
+		int v = 0;
+		switch (*str) {
+		case 'r': v = 0; break;
+		case 'g': v = 1; break;
+		case 'b': v = 2; break;
+		case 'a': v = 3; break;
+		default: return 0xFFFFFFFF;
+		}
+		mask |= v << (i*8);
+	}
+	return mask;
 }
