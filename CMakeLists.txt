@@ -87,6 +87,9 @@ target_link_libraries(vtex2 PRIVATE vtflib_static com fmt::fmt)
 target_include_directories(vtex2 PRIVATE src external)
 target_include_directories(com PRIVATE src external external/vtflib/lib)
 
+# Don't build vtex2 cli as a dynamic executable
+set_target_properties(vtex2 PROPERTIES LINK_FLAGS "-static-libgcc -static-libstdc++ -static")
+
 if (BUILD_GUI)
 	target_link_libraries(vtfview PRIVATE vtflib_static com fmt::fmt)
 	target_include_directories(vtfview PRIVATE src external)
