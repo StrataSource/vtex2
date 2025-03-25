@@ -47,6 +47,7 @@ namespace opts
 	static int nomips;
 	static int toDX;
 	static int quiet;
+	static int swizzle;
 } // namespace opts
 
 static bool get_version_from_str(const std::string& str, int& major, int& minor);
@@ -236,6 +237,13 @@ const OptionList& ActionConvert::get_options() const {
 				.type(OptType::Bool)
 				.help("Silence output messages that aren't errors")
 		);
+
+		opts::swizzle = opts.add(
+			ActionOption()
+				.long_opt("--swizzle")
+				.type(OptType::String)
+				.help("Perform an in-place swizzle on the image data")
+		);
 	};
 	return opts;
 }
@@ -371,9 +379,21 @@ bool ActionConvert::process_file(
 		auto image = std::make_shared<imglib::Image>(
 			vtfFile->GetData(0, 0, 0, 0), procChanType, 4, vtfFile->GetWidth(), vtfFile->GetHeight(), true);
 		if (!image->process(imglib::PROC_GL_TO_DX_NORM)) {
-
 			std::cerr << "Could not process vtf\n";
 			return false;
+		}
+	}
+
+	// Swizzle the image if requested
+	if (opts.has(opts::swizzle)) {
+		uint32_t mask = imglib::swizzle_from_str(opts.get<std::string>(opts::swizzle).data());
+		if (mask != lwiconv::NO_SWIZZLE) {
+			auto image = std::make_shared<imglib::Image>(
+				vtfFile->GetData(0, 0, 0, 0), procChanType, 4, vtfFile->GetWidth(), vtfFile->GetHeight(), true);
+			if (!image->swizzle(mask)) {
+				std::cerr << "Could not swizzle vtf\n";
+				return false;
+			}
 		}
 	}
 
