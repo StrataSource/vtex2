@@ -429,7 +429,7 @@ uint32_t imglib::swizzle_from_str(const char* str) {
 		case 'a': v = 3; break;
 		default: return 0xFFFFFFFF;
 		}
-		mask |= v << (i*8);
+		mask |= v << ((lwiconv::MAX_CHANNELS-i-1)*8);
 	}
 	return mask;
 }
