@@ -296,7 +296,6 @@ bool ActionConvert::process_file(
 	const auto formatStr = opts.get<std::string>(opts::format);
 	const auto srgb = opts.get<bool>(opts::srgb);
 	const auto thumbnail = opts.get<bool>(opts::thumbnail);
-	const auto verStr = opts.get<std::string>(opts::version);
 	const auto isNormal = opts.get<bool>(opts::normal);
 
 	auto nomips = opts.get<bool>(opts::nomips);
@@ -340,14 +339,13 @@ bool ActionConvert::process_file(
 			procChanType = imglib::ChannelType::Float;
 			return IMAGE_FORMAT_RGBA32323232F;
 		}
-		else if (maxBpp > 8) {
+		if (maxBpp > 8) {
 			procChanType = imglib::ChannelType::UInt16;
 			return IMAGE_FORMAT_RGBA16161616;
 		}
-		else {
-			procChanType = imglib::ChannelType::UInt8;
-			return IMAGE_FORMAT_RGBA8888;
-		}
+		// maxBpp <= 8
+		procChanType = imglib::ChannelType::UInt8;
+		return IMAGE_FORMAT_RGBA8888;
 	}();
 
 	// If we're processing a VTF, let's add that VTF image data
@@ -498,7 +496,7 @@ bool ActionConvert::set_properties(VTFLib::CVTFFile* vtfFile) {
 			return false;
 		}
 
-		minorVer = (compressionLevel > 0) ? 6 : minorVer; // Force 7.6 if using DEFLATE
+		minorVer = (compressionLevel > 0 || vtfFile->GetFormat() == IMAGE_FORMAT_BC7) ? 6 : minorVer; // Force 7.6 if using DEFLATE or a Strata-specific image format
 		vtfFile->SetVersion(majorVer, minorVer);
 	}
 
