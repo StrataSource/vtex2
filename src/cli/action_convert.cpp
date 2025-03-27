@@ -496,7 +496,7 @@ bool ActionConvert::set_properties(VTFLib::CVTFFile* vtfFile) {
 			return false;
 		}
 
-		minorVer = (compressionLevel > 0) ? 6 : minorVer; // Force 7.6 if using DEFLATE
+		minorVer = (compressionLevel > 0 || vtfFile->GetFormat() == IMAGE_FORMAT_BC7) ? 6 : minorVer; // Force 7.6 if using DEFLATE or a Strata-specific image format
 		vtfFile->SetVersion(majorVer, minorVer);
 	}
 
