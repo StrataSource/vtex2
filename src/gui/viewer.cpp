@@ -943,7 +943,7 @@ void ImageSettingsWidget::setup_ui(ImageViewWidget* viewer) {
 		auto* check = new QCheckBox(flag.name, this);
 		check->setCheckable(true);
 		connect(
-			check, &QCheckBox::stateChanged,
+			check, &QCheckBox::checkStateChanged,
 			[this, flag](int newState)
 			{
 				if (!file_)
